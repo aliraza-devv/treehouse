@@ -12,6 +12,9 @@
   --color-brand-stone: #d8d5c9;
   --color-brand-charcoal: #1c211d;
   --color-brand-warm: #d89a52;
+
+  /* Expo-out: the one hover/press curve used across the UI (utility: ease-expo-out) */
+  --ease-expo-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @theme inline {
@@ -21,6 +24,7 @@
 
 html {
   background: var(--color-brand-forest);
+  color-scheme: dark;
 }
 
 /* Lenis needs native scroll behaviour off so it can smooth it itself */
@@ -29,22 +33,76 @@ html.lenis body {
   height: auto;
 }
 
-/* Light that travels down the scroll indicator line */
-@keyframes scroll-cue {
+/* Soft shadows that keep cream text legible over bright mist, tinted deep forest (never black) */
+@utility text-shadow-hero {
+  text-shadow: 0 2px 20px color-mix(in srgb, var(--color-brand-forest) 40%, transparent);
+}
+
+@utility text-shadow-logo {
+  text-shadow: 0 1px 12px color-mix(in srgb, var(--color-brand-forest) 45%, transparent);
+}
+
+/* Visible keyboard focus for every interactive element */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-brand-cream) 70%, transparent);
+    outline-offset: 4px;
+  }
+}
+
+/* Load-in elements start hidden so there is no flash of visible text before GSAP reveals them.
+   The layout adds a noscript rule, and reduced motion shows the final state straight away. */
+[data-intro] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-intro] {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+}
+
+/* Scroll cue: the whole element fades in after 2.5s, a warm dot travels down the 40px line.
+   2s ease-in-out loop, as specified. Opacity at both ends hides the dot's entry and exit. */
+@keyframes cue-fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cue-dot {
   0% {
-    transform: translateY(-120%);
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
   }
   100% {
-    transform: translateY(300%);
+    transform: translateY(40px);
+    opacity: 0;
   }
 }
 
 .scroll-cue {
-  animation: scroll-cue 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  opacity: 0;
+  animation: cue-fade-in 1s var(--ease-expo-out) 2.5s forwards;
+}
+
+.scroll-cue-dot {
+  animation: cue-dot 2s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scroll-cue {
+  /* No loop: a static dot sits mid-line, the cue still fades in */
+  .scroll-cue-dot {
     animation: none;
+    transform: translateY(18px);
   }
 }
