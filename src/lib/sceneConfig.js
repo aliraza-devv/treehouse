@@ -84,3 +84,40 @@ export function viewToWorld(ndcX, ndcY, dist, aspect = 16 / 9) {
   const dir = point.sub(cam.position).normalize();
   return cam.position.clone().addScaledVector(dir, dist);
 }
+
+// ---------------------------------------------------------------------------
+// Tree structure contract shared by Tree.jsx (builds the wood) and Treehouse.jsx
+// (builds the cabin on top of it). Azimuth is measured in the XZ plane from +X
+// toward +Z (so 90 degrees points at the camera), tilt is degrees above horizontal.
+// ---------------------------------------------------------------------------
+
+// Trunk radius in world units at height y: slim taper plus a wide buttress flare near the ground.
+export function trunkRadiusAt(y) {
+  const t = THREE.MathUtils.clamp(y / TREE.height, 0, 1);
+  const taper = THREE.MathUtils.lerp(0.95, 0.5, t);
+  const flare = 1 + 1.1 * Math.exp(-y * 0.8);
+  return taper * flare;
+}
+
+// The three main fork branches the platform rests on. Tree.jsx grows them as curved,
+// tapering tubes that start INSIDE the trunk at y; Treehouse.jsx braces onto them.
+export const FORK_BRANCHES = [
+  { y: TREE.forkY, azimuthDeg: 15, tiltDeg: 8, length: 4.8, radius: 0.34 },
+  { y: TREE.forkY + 0.15, azimuthDeg: 165, tiltDeg: 6, length: 4.0, radius: 0.3 },
+  { y: TREE.forkY - 0.1, azimuthDeg: 100, tiltDeg: 4, length: 3.4, radius: 0.28 },
+];
+
+// Deck footprint relative to the trunk axis (x, z offsets of the deck centre) and size.
+// Deck extends toward the camera (+Z) so the underside is visible from the forest floor.
+export const PLATFORM = {
+  y: TREE.platformY,
+  centerOffset: [1.2, 0.8],
+  width: 6.2,
+  depth: 4.8,
+  thickness: 0.22,
+};
+
+// Hard triangle budget for the whole hero scene (CLAUDE.md: under 50k per section).
+// Suggested split: tree trunk and branches 8k, canopy cards 12k, treehouse 12k,
+// forest ground and background 12k, foreground 4k.
+export const TRIANGLE_BUDGET = 50000;

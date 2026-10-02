@@ -42,10 +42,11 @@ A 3D immersive, scroll-driven landing page for Treehouse Life (treehouselife.com
 - Sky: #C5D5E0 to #E0E8EE
 
 ## Visual direction
-- Style: premium storybook, slightly stylized. NOT photorealistic, NOT cartoonish.
-- Think Firewatch palette meets Ghibli lighting meets award-winning web (mont-fort.com, pasqua.it).
+- Style: grounded cinematic realism. A believable misty English woodland at dawn with a real, beautifully crafted luxury treehouse. NOT low-poly, NOT flat-shaded, NOT cartoonish, NOT game-asset. (Updated at the owner's request after the stylized first pass read as generic.)
+- Everything stays procedural: realism comes from runtime-generated PBR textures (canvas + noise), organic geometry, alpha-cut foliage cards, image-based lighting from a procedural sky, and a photographic post stack. No external models or image files.
+- Reference feel: nature-documentary opening shot, award-winning web (mont-fort.com, pasqua.it).
 - Film grain, depth of field, vignette on every scene.
-- Cool morning mist atmosphere transitioning to warm golden hour.
+- Cool morning mist atmosphere with warm sun shafts, transitioning to warm golden hour later in the journey.
 - Typography: serif display font (Cormorant Garamond) for headings, sans-serif (Inter or system) for UI.
 - No em dashes in any copy or content.
 
