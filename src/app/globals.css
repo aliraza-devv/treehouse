@@ -1,12 +1,26 @@
 @import "tailwindcss";
 
+/* Treehouse Life brand colours: utilities like bg-brand-forest, text-brand-cream, border-brand-green */
+@theme {
+  --color-brand-green: #6f9d68;
+  --color-brand-green-light: #b6d4a5;
+  --color-brand-forest: #18251c;
+  --color-brand-moss: #66745a;
+  --color-brand-timber: #8a633f;
+  --color-brand-timber-dark: #49372a;
+  --color-brand-cream: #f1eee4;
+  --color-brand-stone: #d8d5c9;
+  --color-brand-charcoal: #1c211d;
+  --color-brand-warm: #d89a52;
+}
+
 @theme inline {
   --font-display: var(--font-display), "Cormorant Garamond", Georgia, serif;
   --font-sans: var(--font-sans), system-ui, sans-serif;
 }
 
 html {
-  background: #0d1708;
+  background: var(--color-brand-forest);
 }
 
 /* Lenis needs native scroll behaviour off so it can smooth it itself */

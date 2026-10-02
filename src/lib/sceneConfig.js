@@ -2,24 +2,48 @@ import * as THREE from "three";
 
 // Shared contract for every hero scene component. Change values here, not inline.
 
+// Official Treehouse Life brand colours (owner supplied). UI uses these directly.
+export const BRAND = {
+  green: "#6F9D68", // primary brand green, muted natural
+  greenLight: "#B6D4A5", // soft leaf / sage
+  forest: "#18251C", // deep forest, very dark green
+  moss: "#66745A", // muted secondary green
+  timber: "#8A633F", // warm timber, natural wood brown
+  timberDark: "#49372A", // dark timber, deep bark brown
+  cream: "#F1EEE4", // warm cream, natural off-white
+  stone: "#D8D5C9", // soft stone, secondary neutral
+  charcoal: "#1C211D", // UI / text dark
+  warmLight: "#D89A52", // lantern / sunset accent
+};
+
+// Scene base colours (albedo guidance). They are derived from the brand palette:
+// the brand swatch is the mid tone, shadow and highlight tones are darker/lighter
+// shades of the same hue. Realistic lighting, mist and grade then push them around,
+// so albedo can sit a little brighter than what ends up on screen.
+// Fog, sky and the cool ambient have no brand equivalent (a misty morning is cool
+// blue-gray), so they keep the brief values.
 export const PALETTE = {
-  barkDark: "#5C3A1E",
-  bark: "#6B4226",
-  woodDark: "#8B6914",
-  wood: "#A67C3B",
-  leafDark: "#2D5016",
-  leafMid: "#4A7A2E",
-  leafHighlight: "#6B8F3A",
-  floorDark: "#1A2E0F",
-  floorLight: "#2B3D1A",
+  barkDark: BRAND.timberDark, // fissures and shaded bark
+  bark: "#5E4733", // sun-dried ridges, lifted from dark timber
+  woodDark: BRAND.timber, // weathered cedar, shadow side
+  wood: "#A8815A", // fresh or sunlit boards, lifted from warm timber
+  leafDark: "#3D5A3A", // deep canopy interior, darkened brand green
+  leafMid: BRAND.green, // main leaf tone
+  leafHighlight: BRAND.greenLight, // sunlit, backlit leaf edges
+  mossTone: BRAND.moss, // moss on bark, roofs, rocks, ground cover
+  floorDark: BRAND.forest, // forest floor shadow
+  floorLight: "#3A4631", // litter and moss patches, dark moss
   fogDark: "#A0ADB8",
   fog: "#B8C4CC",
   skyLow: "#C5D5E0",
   skyHigh: "#E0E8EE",
   ambient: "#8BA4B8",
   key: "#FFF5E6",
-  particle: "#FFF8E7",
-  pageBg: "#0d1708",
+  warmLight: BRAND.warmLight, // lanterns, interior glow, sun glow, sunset accent
+  particle: BRAND.cream, // dust and pollen motes
+  cream: BRAND.cream,
+  stone: BRAND.stone,
+  pageBg: BRAND.forest,
 };
 
 // Hero tree. The treehouse platform sits where the main branches fork,
