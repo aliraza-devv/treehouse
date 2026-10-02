@@ -3,6 +3,9 @@
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import Lighting from "./Lighting";
+import Atmosphere, { FOG_COLOR } from "./Atmosphere";
+import Forest from "./Forest";
+import ForegroundLeaves from "./ForegroundLeaves";
 import Tree from "./Tree";
 import Treehouse from "./Treehouse";
 
@@ -18,18 +21,16 @@ export default function Scene() {
         gl={{ antialias: true, powerPreference: "high-performance" }}
         onCreated={({ camera }) => camera.lookAt(3.6, 6.5, 0)}
       >
-        <color attach="background" args={["#C5D5E0"]} />
+        <color attach="background" args={[FOG_COLOR]} />
+        <Atmosphere />
         <Lighting />
         {/* Tree sits right of centre so the headline can live on the left */}
         <group position={[2.6, 0, 0]}>
           <Tree />
           <Treehouse />
         </group>
-        {/* Temporary ground, replaced by the full forest floor in the next step */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[120, 120]} />
-          <meshStandardMaterial color="#2B3D1A" roughness={1} />
-        </mesh>
+        <Forest />
+        <ForegroundLeaves />
       </Canvas>
     </div>
   );
