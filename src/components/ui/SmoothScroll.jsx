@@ -1,25 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import Lenis from "lenis";
-import { gsap, ScrollTrigger } from "@/lib/gsap";
+import { initLenis } from "@/lib/lenis";
 
-// Lenis smooth scrolling driven by the GSAP ticker so ScrollTrigger stays in sync.
+// Mounts Lenis once for the whole page (skipped for reduced-motion visitors).
 export default function SmoothScroll() {
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    const lenis = new Lenis({ duration: 1.25, smoothWheel: true });
-    lenis.on("scroll", ScrollTrigger.update);
-    // GSAP ticker time is in seconds, Lenis expects milliseconds.
-    const tick = (time) => lenis.raf(time * 1000);
-    gsap.ticker.add(tick);
-    gsap.ticker.lagSmoothing(0);
-
-    return () => {
-      gsap.ticker.remove(tick);
-      lenis.destroy();
-    };
+    return initLenis();
   }, []);
   return null;
 }
