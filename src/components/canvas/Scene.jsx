@@ -4,8 +4,11 @@ import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import Lighting from "./Lighting";
 import Atmosphere, { FOG_COLOR } from "./Atmosphere";
+import CameraRig, { CAMERA_BASE } from "./CameraRig";
 import Forest from "./Forest";
 import ForegroundLeaves from "./ForegroundLeaves";
+import GodRays from "./GodRays";
+import Particles from "./Particles";
 import Tree from "./Tree";
 import Treehouse from "./Treehouse";
 
@@ -17,9 +20,8 @@ export default function Scene() {
         shadows={{ type: THREE.PCFShadowMap }}
         dpr={[1, 1.75]}
         // Camera sits low on the forest floor and looks up toward the treehouse deck.
-        camera={{ position: [1, 3, 17], fov: 45, near: 0.1, far: 120 }}
+        camera={{ position: CAMERA_BASE.toArray(), fov: 45, near: 0.1, far: 120 }}
         gl={{ antialias: true, powerPreference: "high-performance" }}
-        onCreated={({ camera }) => camera.lookAt(3.6, 6.5, 0)}
       >
         <color attach="background" args={[FOG_COLOR]} />
         <Atmosphere />
@@ -31,6 +33,9 @@ export default function Scene() {
         </group>
         <Forest />
         <ForegroundLeaves />
+        <GodRays />
+        <Particles />
+        <CameraRig />
       </Canvas>
     </div>
   );
