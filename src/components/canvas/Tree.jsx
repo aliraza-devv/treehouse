@@ -137,7 +137,7 @@ function Foliage() {
 }
 
 export default function Tree() {
-  const trunk = useMemo(buildTrunkGeometry, []);
+  const trunk = useMemo(() => buildTrunkGeometry(), []);
   return (
     <group>
       <mesh geometry={trunk} castShadow receiveShadow>

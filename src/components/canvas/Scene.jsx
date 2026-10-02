@@ -1,6 +1,7 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
+import { useRef } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import Lighting from "./Lighting";
 import Atmosphere, { FOG_COLOR } from "./Atmosphere";
@@ -13,8 +14,18 @@ import Particles from "./Particles";
 import Tree from "./Tree";
 import Treehouse from "./Treehouse";
 
+// Fires once, after the first frames have rendered, so the load-in can start on a warm scene.
+function ReadySignal({ onReady }) {
+  const frames = useRef(0);
+  useFrame(() => {
+    if (frames.current === 12) onReady?.();
+    frames.current += 1;
+  });
+  return null;
+}
+
 // Full-screen R3F canvas. Everything 3D for the hero mounts inside here.
-export default function Scene() {
+export default function Scene({ onReady }) {
   return (
     <div className="fixed inset-0 z-0">
       <Canvas
@@ -38,6 +49,7 @@ export default function Scene() {
         <GodRays />
         <Particles />
         <CameraRig />
+        <ReadySignal onReady={onReady} />
         <Effects />
       </Canvas>
     </div>

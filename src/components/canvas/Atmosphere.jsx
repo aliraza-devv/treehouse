@@ -32,7 +32,7 @@ const MIST = [
 // Cool morning atmosphere: exponential-ish linear fog, a vertical sky gradient dome,
 // and a few low mist sprites drifting between the trunks.
 export default function Atmosphere() {
-  const mistTex = useMemo(makeMistTexture, []);
+  const mistTex = useMemo(() => makeMistTexture(), []);
 
   // Gradient dome: sky blue overhead melting into fog colour at the horizon.
   const skyMat = useMemo(

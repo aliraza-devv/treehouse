@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -25,8 +25,9 @@ export default function GodRays() {
     () => BEAMS.map((b) => ({ uTime: { value: 0 }, uAlpha: { value: b.a }, uPhase: { value: b.ph } })),
     [],
   );
+  const mats = useRef([]);
   useFrame(({ clock }) => {
-    for (const u of uniforms) u.uTime.value = clock.elapsedTime;
+    for (const m of mats.current) if (m) m.uniforms.uTime.value = clock.elapsedTime;
   });
 
   return (
@@ -35,6 +36,9 @@ export default function GodRays() {
         <mesh key={i} position={[b.x, 8, b.z]} rotation={[0, 0, LEAN]} renderOrder={3}>
           <planeGeometry args={[b.w, b.len]} />
           <shaderMaterial
+            ref={(m) => {
+              mats.current[i] = m;
+            }}
             uniforms={uniforms[i]}
             transparent
             depthWrite={false}

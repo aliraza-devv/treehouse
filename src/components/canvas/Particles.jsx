@@ -32,7 +32,7 @@ export default function Particles() {
   );
 
   useFrame(({ clock }) => {
-    uniforms.uTime.value = clock.elapsedTime;
+    if (mat.current) mat.current.uniforms.uTime.value = clock.elapsedTime;
   });
 
   return (

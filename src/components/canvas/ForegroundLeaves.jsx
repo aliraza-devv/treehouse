@@ -20,7 +20,7 @@ const COUNT = 36;
 export default function ForegroundLeaves() {
   const ref = useRef(null);
   const group = useRef(null);
-  const geo = useMemo(buildLeafGeometry, []);
+  const geo = useMemo(() => buildLeafGeometry(), []);
 
   useLayoutEffect(() => {
     const rng = createRng(99);
