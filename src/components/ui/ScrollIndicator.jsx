@@ -1,15 +1,19 @@
-// Bottom-centre cue: a label above a line with a light that travels down it.
+import { LAYERS } from "@/lib/layers";
+
+// Bottom-centre cue. Decorative (the hero does not scroll yet), so it is hidden from assistive tech.
+// Fade-in and dot loop are pure CSS keyframes (see globals.css), so no JS is needed.
 export default function ScrollIndicator() {
   return (
     <div
-      data-intro="scroll"
-      className="invisible absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-3"
       aria-hidden="true"
+      className="scroll-cue pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center [@media(max-height:480px)]:hidden"
+      style={{ zIndex: LAYERS.content }}
     >
-      <span className="text-[0.65rem] uppercase tracking-[0.35em] text-[#F4F1E8]/75">Scroll</span>
-      <span className="relative block h-14 w-px overflow-hidden bg-[#F4F1E8]/25">
-        <span className="scroll-cue absolute left-0 top-0 block h-5 w-px bg-[#D8B26A]" />
+      {/* 1px by 40px line with a small warm dot travelling down it */}
+      <span className="relative block h-10 w-px bg-brand-cream/40">
+        <span className="scroll-cue-dot absolute -left-[1.5px] top-0 block size-1 rounded-full bg-brand-warm" />
       </span>
+      <span className="mt-3 text-[11px] uppercase tracking-[2px] text-brand-cream/35">Scroll to explore</span>
     </div>
   );
 }
