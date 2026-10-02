@@ -5,6 +5,7 @@ import * as THREE from "three";
 import Lighting from "./Lighting";
 import Atmosphere, { FOG_COLOR } from "./Atmosphere";
 import CameraRig, { CAMERA_BASE } from "./CameraRig";
+import Effects from "./Effects";
 import Forest from "./Forest";
 import ForegroundLeaves from "./ForegroundLeaves";
 import GodRays from "./GodRays";
@@ -21,7 +22,8 @@ export default function Scene() {
         dpr={[1, 1.75]}
         // Camera sits low on the forest floor and looks up toward the treehouse deck.
         camera={{ position: CAMERA_BASE.toArray(), fov: 45, near: 0.1, far: 120 }}
-        gl={{ antialias: true, powerPreference: "high-performance" }}
+        // Antialiasing and tone mapping move into the postprocessing stack (Effects.jsx).
+        gl={{ antialias: false, powerPreference: "high-performance", toneMapping: THREE.NoToneMapping }}
       >
         <color attach="background" args={[FOG_COLOR]} />
         <Atmosphere />
@@ -36,6 +38,7 @@ export default function Scene() {
         <GodRays />
         <Particles />
         <CameraRig />
+        <Effects />
       </Canvas>
     </div>
   );
