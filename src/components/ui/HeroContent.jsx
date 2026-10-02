@@ -44,29 +44,30 @@ export default function HeroContent() {
   return (
     <div
       ref={root}
-      className="absolute inset-x-0 bottom-0 px-6 pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:px-8 lg:px-16"
+      className="pointer-events-none relative px-6 pt-24 pb-30 md:px-8 lg:px-16 [@media(max-height:480px)]:pb-8"
       style={{ zIndex: LAYERS.content }}
     >
       <h1
         data-intro="heading"
-        className="text-shadow-hero max-w-[550px] font-display text-[clamp(2.5rem,5vw,4rem)] font-medium leading-[1.15] text-balance text-brand-cream"
+        className="text-shadow-hero pointer-events-auto max-w-[550px] font-display text-[clamp(2.5rem,5vw,4rem)] font-medium leading-[1.15] tracking-[-0.01em] text-balance text-brand-cream"
       >
         Some memories are built, not bought.
       </h1>
 
       <p
         data-intro="sub"
-        className="mt-4 max-w-[34rem] text-[15px] font-normal text-pretty text-brand-cream/70"
+        className="text-shadow-logo pointer-events-auto mt-4 max-w-[34rem] text-[15px] font-normal text-pretty text-brand-cream/70"
       >
         Award-winning treehouse, rope bridge &amp; treetop walkway builders.
       </p>
 
       <ul
+        role="list"
         data-intro="stats"
-        className="mt-8 flex w-fit divide-x divide-brand-cream/25 text-[13px] tabular-nums text-brand-cream/50"
+        className="text-shadow-logo pointer-events-auto mt-8 flex w-fit divide-x divide-brand-cream/25 text-[13px] tabular-nums text-brand-cream/50 max-[359px]:text-xs"
       >
         {STATS.map((stat) => (
-          <li key={stat.label} className="px-4 first:pl-0 last:pr-0">
+          <li key={stat.label} className="px-4 whitespace-nowrap first:pl-0 last:pr-0 max-[359px]:px-2.5 max-[359px]:first:pl-0 max-[359px]:last:pr-0">
             {stat.value} {stat.label}
           </li>
         ))}

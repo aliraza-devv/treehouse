@@ -6,4 +6,5 @@ export const LAYERS = {
   content: 20, // hero heading, subline, stats, scroll cue
   nav: 30, // fixed navbar
   menu: 40, // mobile menu overlay and its toggle (always above the nav)
+  skip: 50, // skip-to-content link while focused
 };

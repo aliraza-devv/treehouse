@@ -6,7 +6,7 @@ export default function ScrollIndicator() {
   return (
     <div
       aria-hidden="true"
-      className="scroll-cue pointer-events-none absolute inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col items-center"
+      className="scroll-cue pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center [@media(max-height:480px)]:hidden"
       style={{ zIndex: LAYERS.content }}
     >
       {/* 1px by 40px line with a small warm dot travelling down it */}

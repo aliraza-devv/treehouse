@@ -9,13 +9,20 @@ if (typeof window !== "undefined") {
   CustomEase.create("expoOut", "0.16, 1, 0.3, 1");
 }
 
+const FONT_WAIT_MS = 1500;
+
 // Runs `start` once web fonts are ready and the browser has painted twice, so a font
 // swap cannot cause layout jank mid-animation. Returns a cancel function.
 export function afterFontsReady(start) {
   let cancelled = false;
   let raf1 = 0;
   let raf2 = 0;
-  const fonts = document.fonts ? document.fonts.ready : Promise.resolve();
+  // Never wait on fonts for more than 1.5s: a stalled font request must not leave the hero hidden.
+  // The fallback face is size-adjusted by next/font, so a late swap does not shift the layout.
+  const fonts = Promise.race([
+    document.fonts ? document.fonts.ready : Promise.resolve(),
+    new Promise((resolve) => setTimeout(resolve, FONT_WAIT_MS)),
+  ]);
   fonts.then(() => {
     if (cancelled) return;
     raf1 = requestAnimationFrame(() => {
