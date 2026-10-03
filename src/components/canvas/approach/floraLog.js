@@ -17,7 +17,7 @@
 // below it the rotted butt strip, above it the fresh splintered wood strip.
 
 import * as THREE from "three";
-import { atPath, FALLEN_LOG } from "@/lib/sections/world";
+import { atPath, FALLEN_LOG, MUSHROOM_CLUSTERS } from "@/lib/sections/world";
 import { groundHeight } from "@/lib/sceneConfig";
 import { createRng, range } from "@/lib/random";
 import { createNoise, createWorley, clamp, smoothstep, hash2 } from "@/lib/noise";
@@ -615,6 +615,19 @@ export function buildLogWood(frame) {
     }
     for (let i = 0; i < 2; i++) b.quad(rows[i][0], rows[i][1], rows[i + 1][1], rows[i + 1][0]);
   }
+  {
+    // the rotting stub beside the path, leaning a little, its top broken and jagged
+    const st = rottenStub();
+    const lean = [range(rng, -0.05, 0.05), range(rng, -0.05, 0.05)];
+    const pts = [];
+    const radii = [];
+    for (let i = 0; i <= 3; i++) {
+      const t = i / 3;
+      pts.push([st.x + lean[0] * t, st.y - 0.05 + (st.h + 0.05) * t, st.z + lean[1] * t]);
+      radii.push(st.r * (1.2 - 0.3 * t));
+    }
+    addTube(b, pts, radii, 7, [0.1, 0.4, 0.4, 0.47], [0.9, 0.85, 0.8], { broken: true, rng });
+  }
   const stubFlapTriangles = b.triangles - bodyTriangles;
 
   // ---- roots of the upturned root plate (the soil mass itself is buildLogSoil)
@@ -655,6 +668,14 @@ export function buildLogWood(frame) {
 
 function groundHeightSafe(x, z) {
   return groundHeight(x, z);
+}
+
+// A short rotting stub (the broken base of a long dead sapling) at the third mushroom cluster: honey
+// fungus grows from it. It is the same wood material as the log.
+export function rottenStub() {
+  const m = MUSHROOM_CLUSTERS[2];
+  const p = atPath(m.s, m.lateral);
+  return { x: p.x, y: groundHeight(p.x, p.z), z: p.z, r: 0.14, h: 0.34 };
 }
 
 // The root plate: an upturned disc of soil and roots standing at the butt end, plane normal toward the

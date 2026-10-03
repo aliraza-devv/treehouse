@@ -435,11 +435,11 @@ const V_CAP = [0.51, 0.99];
 // as [r, y] (y measured from the TOP of the stem), and the underside centre height (same reference).
 const MUSHROOM_KINDS = {
   // young, domed button cap on a tall slender stem
-  bun: { stemH: 2.4, stemR0: 0.24, stemR1: 0.17, cap: [[0, 0.74], [0.62, 0.62], [1.0, 0.14]], under: 0.06 },
+  bun: { stemH: 2.4, stemR0: 0.24, stemR1: 0.17, cap: [[0, 0.74], [0.62, 0.62], [1.0, 0.14]], under: 0.22 },
   // mature honey fungus cap: flat with a low umbo and a slightly drooping rim, long stem
-  open: { stemH: 2.9, stemR0: 0.17, stemR1: 0.11, cap: [[0, 0.44], [0.55, 0.4], [1.0, 0.04]], under: 0.0 },
+  open: { stemH: 2.9, stemR0: 0.17, stemR1: 0.11, cap: [[0, 0.44], [0.55, 0.4], [1.0, 0.04]], under: 0.12 },
   // large funnel shaped cap, centre lower than the up-turned rim, stout stem
-  funnel: { stemH: 1.8, stemR0: 0.32, stemR1: 0.22, cap: [[0, 0.0], [0.5, 0.08], [1.0, 0.26]], under: -0.02 },
+  funnel: { stemH: 1.8, stemR0: 0.32, stemR1: 0.22, cap: [[0, 0.14], [0.5, 0.2], [1.0, 0.32]], under: 0.06 },
 };
 export const MUSHROOM_KIND_NAMES = Object.keys(MUSHROOM_KINDS);
 
