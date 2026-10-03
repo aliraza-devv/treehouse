@@ -33,19 +33,19 @@ A 3D immersive, scroll-driven landing page for Treehouse Life (treehouselife.com
 - Prefer `MeshStandardMaterial` over `MeshBasicMaterial` for anything that should respond to light.
 - Comment non-obvious math (camera positions, geometry construction, animation timing).
 
-## Color palette
-- Tree bark: #5C3A1E to #6B4226
-- Treehouse wood: #8B6914 to #A67C3B
-- Leaves/canopy: #2D5016 to #4A7A2E, highlights #6B8F3A
-- Forest floor: #1A2E0F to #2B3D1A
-- Fog/mist: #A0ADB8 to #B8C4CC
-- Sky: #C5D5E0 to #E0E8EE
+## Color palette (official brand colours, owner supplied)
+- Primary green #6F9D68, light green (sage) #B6D4A5, deep forest #18251C, moss #66745A
+- Warm timber #8A633F, dark timber #49372A
+- Warm cream #F1EEE4, soft stone #D8D5C9, charcoal #1C211D
+- Warm light (lanterns, sunset accent) #D89A52
+- UI: page background deep forest, text warm cream, accents primary green and warm light. Use the Tailwind tokens `brand-*` from globals.css, never hard-coded hexes. Scene: `BRAND` and `PALETTE` in `src/lib/sceneConfig.js` (leaves = greens, bark = dark timber, wood = warm timber, floor = deep forest and moss). Fog, sky and cool ambient light stay a cool misty blue-gray because the brand has no equivalent.
 
 ## Visual direction
-- Style: premium storybook, slightly stylized. NOT photorealistic, NOT cartoonish.
-- Think Firewatch palette meets Ghibli lighting meets award-winning web (mont-fort.com, pasqua.it).
+- Style: grounded cinematic realism. A believable misty English woodland at dawn with a real, beautifully crafted luxury treehouse. NOT low-poly, NOT flat-shaded, NOT cartoonish, NOT game-asset. (Updated at the owner's request after the stylized first pass read as generic.)
+- Everything stays procedural: realism comes from runtime-generated PBR textures (canvas + noise), organic geometry, alpha-cut foliage cards, image-based lighting from a procedural sky, and a photographic post stack. No external models or image files.
+- Reference feel: nature-documentary opening shot, award-winning web (mont-fort.com, pasqua.it).
 - Film grain, depth of field, vignette on every scene.
-- Cool morning mist atmosphere transitioning to warm golden hour.
+- Cool morning mist atmosphere with warm sun shafts, transitioning to warm golden hour later in the journey.
 - Typography: serif display font (Cormorant Garamond) for headings, sans-serif (Inter or system) for UI.
 - No em dashes in any copy or content.
 

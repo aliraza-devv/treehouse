@@ -1,56 +1,66 @@
 "use client";
 
-import { useRef } from "react";
+import { Suspense, lazy, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import Lighting from "./Lighting";
-import Atmosphere, { FOG_COLOR } from "./Atmosphere";
-import CameraRig, { CAMERA_BASE } from "./CameraRig";
-import Effects from "./Effects";
-import Forest from "./Forest";
-import ForegroundLeaves from "./ForegroundLeaves";
-import GodRays from "./GodRays";
-import Particles from "./Particles";
-import Tree from "./Tree";
-import Treehouse from "./Treehouse";
+import { CAMERA, FOG } from "@/lib/sceneConfig";
+import HeroScene from "./HeroScene";
+import PostProcessing, { EXPOSURE } from "./PostProcessing";
 
-// Fires once, after the first frames have rendered, so the load-in can start on a warm scene.
-function ReadySignal({ onReady }) {
+// Development tooling is only referenced behind a build-time constant, so the bundler drops the
+// whole import in production and r3f-perf (a dev dependency) never ships.
+const DevTools = process.env.NODE_ENV === "development" ? lazy(() => import("./DevTools")) : null;
+
+// Starts the fade-in once the scene has really drawn several frames (the staged parts are in by then). Texture painting and
+// shader compilation can block the main thread for a moment, and a CSS transition that begins
+// before that block would be eaten by it and look like a pop.
+function FadeInTrigger({ onVisible }) {
   const frames = useRef(0);
   useFrame(() => {
-    if (frames.current === 12) onReady?.();
     frames.current += 1;
+    if (frames.current === 10) onVisible(); // after the staged parts have mounted
   });
   return null;
 }
 
 // Full-screen R3F canvas. Everything 3D for the hero mounts inside here.
-export default function Scene({ onReady }) {
+export default function Scene() {
+  const [visible, setVisible] = useState(false);
+
   return (
-    <div className="fixed inset-0 z-0">
+    // The deep forest page colour sits behind the canvas, so the fade-in never reveals white.
+    <div
+      className={`pointer-events-none fixed inset-0 z-0 bg-brand-forest transition-opacity duration-[1400ms] ease-out ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
+    >
       <Canvas
-        shadows={{ type: THREE.PCFShadowMap }}
+        // The soft filter in this three.js version is PCFShadowMap (PCFSoftShadowMap was
+        // removed); its softness is set per light with shadow.radius (see HeroScene).
+        // autoUpdate is off: HeroScene's ShadowScheduler refreshes the map about 10 times a second.
+        shadows={{ type: THREE.PCFShadowMap, autoUpdate: false }}
         dpr={[1, 1.75]}
-        // Camera sits low on the forest floor and looks up toward the treehouse deck.
-        camera={{ position: CAMERA_BASE.toArray(), fov: 45, near: 0.1, far: 120 }}
-        // Antialiasing and tone mapping move into the postprocessing stack (Effects.jsx).
-        gl={{ antialias: false, powerPreference: "high-performance", toneMapping: THREE.NoToneMapping }}
+        // Rotation is owned by the camera rig (useIdle), which also adapts FOV to the viewport.
+        camera={{ position: CAMERA.position, fov: CAMERA.fov, near: CAMERA.near, far: CAMERA.far }}
+        gl={{
+          // Edges are handled by SMAA in the post stack (MSAA cannot coexist with the depth
+          // texture used by DoF and AO), and tone mapping happens in the post stack too.
+          antialias: false,
+          stencil: false,
+          powerPreference: "high-performance",
+          toneMapping: THREE.NoToneMapping,
+          toneMappingExposure: EXPOSURE,
+        }}
       >
-        <color attach="background" args={[FOG_COLOR]} />
-        <Atmosphere />
-        <Lighting />
-        {/* Tree sits right of centre so the headline can live on the left */}
-        <group position={[2.6, 0, 0]}>
-          <Tree />
-          <Treehouse />
-        </group>
-        <Forest />
-        <ForegroundLeaves />
-        <GodRays />
-        <Particles />
-        <CameraRig />
-        <ReadySignal onReady={onReady} />
-        <Effects />
+        <color attach="background" args={[FOG.color]} />
+        <HeroScene />
+        <PostProcessing />
+        <FadeInTrigger onVisible={() => setVisible(true)} />
+        {DevTools && (
+          <Suspense fallback={null}>
+            <DevTools />
+          </Suspense>
+        )}
       </Canvas>
     </div>
   );

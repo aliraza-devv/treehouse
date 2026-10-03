@@ -1,12 +1,31 @@
 @import "tailwindcss";
 
+/* Treehouse Life brand colours: utilities like bg-brand-forest, text-brand-cream, border-brand-green */
+@theme {
+  --color-brand-green: #6f9d68;
+  --color-brand-green-light: #b6d4a5;
+  --color-brand-forest: #18251c;
+  --color-brand-moss: #66745a;
+  --color-brand-timber: #8a633f;
+  --color-brand-timber-dark: #49372a;
+  --color-brand-cream: #f1eee4;
+  --color-brand-stone: #d8d5c9;
+  --color-brand-charcoal: #1c211d;
+  --color-brand-warm: #d89a52;
+
+  /* Expo-out: the one hover/press curve used across the UI (utility: ease-expo-out) */
+  --ease-expo-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* next/font exposes --font-cormorant and --font-inter on <html>; these map them to the utilities */
 @theme inline {
-  --font-display: var(--font-display), "Cormorant Garamond", Georgia, serif;
-  --font-sans: var(--font-sans), system-ui, sans-serif;
+  --font-display: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
 }
 
 html {
-  background: #0d1708;
+  background: var(--color-brand-forest);
+  color-scheme: dark;
 }
 
 /* Lenis needs native scroll behaviour off so it can smooth it itself */
@@ -15,22 +34,142 @@ html.lenis body {
   height: auto;
 }
 
-/* Light that travels down the scroll indicator line */
-@keyframes scroll-cue {
+/* While the mobile menu is open Lenis is stopped; this stops the page scrolling behind it */
+html.lenis-stopped {
+  overflow: hidden;
+}
+
+/* Text selection stays on brand instead of the browser default blue */
+::selection {
+  background: color-mix(in srgb, var(--color-brand-green) 45%, transparent);
+  color: var(--color-brand-cream);
+}
+
+/* Soft shadows that keep cream text legible over bright mist, tinted deep forest (never black) */
+@utility text-shadow-hero {
+  text-shadow: 0 2px 20px color-mix(in srgb, var(--color-brand-forest) 40%, transparent);
+}
+
+@utility text-shadow-logo {
+  text-shadow: 0 1px 12px color-mix(in srgb, var(--color-brand-forest) 45%, transparent);
+}
+
+/* Visible keyboard focus for every interactive element. Two tone: a solid cream line with a deep
+   forest halo either side, so it reads over bright mist as well as over the dark scene. */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--color-brand-cream);
+    outline-offset: 2px;
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--color-brand-forest) 85%, transparent),
+      0 0 0 6px color-mix(in srgb, var(--color-brand-forest) 70%, transparent);
+  }
+}
+
+/* Skip link: parked off screen until it takes keyboard focus */
+@utility skip-link {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  transform: translateY(-250%);
+  border-radius: 9999px;
+  background: var(--color-brand-forest);
+  padding: 0.625rem 1.25rem;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-brand-cream);
+  &:focus-visible {
+    transform: none;
+  }
+}
+
+/* Legibility scrim behind the hero text block: roughly 60% deep forest under the copy, fading out
+   toward the upper right so the scene still breathes. The radii are percentages of the viewport
+   (max() is not valid inside a gradient radius), so below 1024px, where the text spans most of
+   the width, the ellipse is wider. */
+@utility bg-scrim-hero {
+  --scrim-rx: 100%;
+  background-image: radial-gradient(
+    var(--scrim-rx) 74% at 10% 92%,
+    color-mix(in srgb, var(--color-brand-forest) 68%, transparent) 0%,
+    color-mix(in srgb, var(--color-brand-forest) 60%, transparent) 45%,
+    color-mix(in srgb, var(--color-brand-forest) 30%, transparent) 72%,
+    transparent 100%
+  );
+  @media (min-width: 1024px) {
+    --scrim-rx: 66%;
+  }
+}
+
+/* Load-in elements start hidden so there is no flash of visible text before GSAP reveals them.
+   The layout adds a noscript rule, and reduced motion shows the final state straight away. */
+[data-intro] {
+  opacity: 0;
+  visibility: hidden;
+  /* Failsafe: if the GSAP reveal never runs (bundle blocked or failed), show everything after 6s.
+     The reveal is done by about 2.5s and lands on the same state, so this is invisible normally. */
+  animation: intro-failsafe 0.01s linear 6s forwards;
+}
+
+@keyframes intro-failsafe {
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-intro] {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* Scroll cue: the whole element fades in after 2.5s, a warm dot travels down the 40px line.
+   2s ease-in-out loop, as specified. Opacity at both ends hides the dot's entry and exit. */
+@keyframes cue-fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cue-dot {
   0% {
-    transform: translateY(-120%);
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
   }
   100% {
-    transform: translateY(300%);
+    transform: translateY(40px);
+    opacity: 0;
   }
 }
 
 .scroll-cue {
-  animation: scroll-cue 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  opacity: 0;
+  animation: cue-fade-in 1s var(--ease-expo-out) 2.5s forwards;
+}
+
+.scroll-cue-dot {
+  animation: cue-dot 2s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* No keyframes at all: the cue is simply there, with a static dot mid-line */
   .scroll-cue {
     animation: none;
+    opacity: 1;
+  }
+
+  .scroll-cue-dot {
+    animation: none;
+    transform: translateY(18px);
   }
 }
