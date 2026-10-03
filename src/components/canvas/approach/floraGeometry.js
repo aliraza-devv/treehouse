@@ -432,14 +432,14 @@ const V_STEM = [0.23, 0.49];
 const V_CAP = [0.51, 0.99];
 
 // Each kind: stem (height, radius at base, radius at top), cap top rings from the apex out to the rim
-// as [r, y] (y measured from the stem base), and the underside centre height.
+// as [r, y] (y measured from the TOP of the stem), and the underside centre height (same reference).
 const MUSHROOM_KINDS = {
-  // young, domed button cap on a tall stem
-  bun: { stemH: 1.9, stemR0: 0.27, stemR1: 0.2, cap: [[0, 2.62], [0.62, 2.5], [1.0, 2.02]], under: 1.96 },
-  // mature honey fungus cap: flat with a low umbo and a slightly drooping rim
-  open: { stemH: 1.5, stemR0: 0.19, stemR1: 0.13, cap: [[0, 1.92], [0.55, 1.88], [1.0, 1.56]], under: 1.5 },
+  // young, domed button cap on a tall slender stem
+  bun: { stemH: 2.4, stemR0: 0.24, stemR1: 0.17, cap: [[0, 0.74], [0.62, 0.62], [1.0, 0.14]], under: 0.06 },
+  // mature honey fungus cap: flat with a low umbo and a slightly drooping rim, long stem
+  open: { stemH: 2.9, stemR0: 0.17, stemR1: 0.11, cap: [[0, 0.44], [0.55, 0.4], [1.0, 0.04]], under: 0.0 },
   // large funnel shaped cap, centre lower than the up-turned rim, stout stem
-  funnel: { stemH: 1.2, stemR0: 0.34, stemR1: 0.25, cap: [[0, 1.22], [0.5, 1.3], [1.0, 1.46]], under: 1.24 },
+  funnel: { stemH: 1.8, stemR0: 0.32, stemR1: 0.22, cap: [[0, 0.0], [0.5, 0.08], [1.0, 0.26]], under: -0.02 },
 };
 export const MUSHROOM_KIND_NAMES = Object.keys(MUSHROOM_KINDS);
 
@@ -474,7 +474,7 @@ export function buildMushroom(kind = "open", radial = 8) {
     strip(ringVerts(k.stemR0, 0, nr, ny, V_STEM[0]), ringVerts(k.stemR1, k.stemH, nr, ny, V_STEM[1]));
   }
   // cap top: apex fan, then one band per remaining ring. Smooth normals from the profile.
-  const cap = k.cap;
+  const cap = k.cap.map(([r, y]) => [r, k.stemH + y]);
   const nApex = [0, 1];
   const n1 = profileNormal(cap[0][0], cap[0][1], cap[1][0], cap[1][1], -1);
   const n2 = profileNormal(cap[1][0], cap[1][1], cap[2][0], cap[2][1], -1);
@@ -497,7 +497,7 @@ export function buildMushroom(kind = "open", radial = 8) {
       under.push(b.vertex(Math.cos(a) * cap[2][0], cap[2][1] - 0.02, Math.sin(a) * cap[2][0], 0, -1, 0, i / radial, V_GILL[0]));
     }
     for (let i = 0; i < radial; i++) {
-      const c = b.vertex(0, k.under, 0, 0, -1, 0, (i + 0.5) / radial, V_GILL[1]);
+      const c = b.vertex(0, k.stemH + k.under, 0, 0, -1, 0, (i + 0.5) / radial, V_GILL[1]);
       b.tri(c, under[i], under[i + 1]);
     }
   }
