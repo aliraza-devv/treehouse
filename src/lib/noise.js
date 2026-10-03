@@ -410,10 +410,29 @@ export function fillFbm(noise, out, w, h, opts = {}) {
 }
 
 // Bilinear resample of a scalar field. wrap = true treats the field as periodic (tileable).
+// Column indices and weights are computed once, then reused for every row.
 export function resampleBilinear(src, sw, sh, dw, dh, wrap = true) {
   const dst = new Float32Array(dw * dh);
   const sxScale = sw / dw;
   const syScale = sh / dh;
+  const cx0 = new Int32Array(dw);
+  const cx1 = new Int32Array(dw);
+  const ctx = new Float32Array(dw);
+  for (let x = 0; x < dw; x++) {
+    const fx = (x + 0.5) * sxScale - 0.5;
+    let x0 = Math.floor(fx);
+    ctx[x] = fx - x0;
+    let x1 = x0 + 1;
+    if (wrap) {
+      x0 = (x0 + sw) % sw;
+      x1 = x1 % sw;
+    } else {
+      x0 = x0 < 0 ? 0 : x0;
+      x1 = x1 >= sw ? sw - 1 : x1;
+    }
+    cx0[x] = x0;
+    cx1[x] = x1;
+  }
   for (let y = 0; y < dh; y++) {
     const fy = (y + 0.5) * syScale - 0.5;
     let y0 = Math.floor(fy);
@@ -426,23 +445,17 @@ export function resampleBilinear(src, sw, sh, dw, dh, wrap = true) {
       y0 = y0 < 0 ? 0 : y0;
       y1 = y1 >= sh ? sh - 1 : y1;
     }
+    const r0 = y0 * sw;
+    const r1 = y1 * sw;
+    const o = y * dw;
+    const iy = 1 - ty;
     for (let x = 0; x < dw; x++) {
-      const fx = (x + 0.5) * sxScale - 0.5;
-      let x0 = Math.floor(fx);
-      const tx = fx - x0;
-      let x1 = x0 + 1;
-      if (wrap) {
-        x0 = (x0 + sw) % sw;
-        x1 = x1 % sw;
-      } else {
-        x0 = x0 < 0 ? 0 : x0;
-        x1 = x1 >= sw ? sw - 1 : x1;
-      }
-      const a = src[y0 * sw + x0];
-      const b = src[y0 * sw + x1];
-      const c = src[y1 * sw + x0];
-      const d = src[y1 * sw + x1];
-      dst[y * dw + x] = (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
+      const a = src[r0 + cx0[x]];
+      const b = src[r0 + cx1[x]];
+      const c = src[r1 + cx0[x]];
+      const d = src[r1 + cx1[x]];
+      const t = ctx[x];
+      dst[o + x] = (a + (b - a) * t) * iy + (c + (d - c) * t) * ty;
     }
   }
   return dst;

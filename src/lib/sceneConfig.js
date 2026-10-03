@@ -34,9 +34,12 @@ export const PALETTE = {
   floorDark: BRAND.forest, // forest floor shadow
   floorLight: "#3A4631", // litter and moss patches, dark moss
   fogDark: "#A0ADB8",
-  fog: "#B8C4CC",
+  fog: "#9DAAB4",
   skyLow: "#C5D5E0",
   skyHigh: "#E0E8EE",
+  skyCloud: "#F2F6F9", // thin cloud veil in the lighting-only environment capture
+  litterWarm: "#7A5A34", // fallen oak and beech leaf litter, warm end (timber, darkened)
+  lampGlow: `#${new THREE.Color(BRAND.warmLight).lerp(new THREE.Color(BRAND.cream), 0.3).getHexString()}`, // bulb and lantern core: warm light lifted toward cream
   ambient: "#8BA4B8",
   key: "#FFF5E6",
   warmLight: BRAND.warmLight, // lanterns, interior glow, sun glow, sunset accent
@@ -59,9 +62,9 @@ export const TREE = {
 // Camera: low on the forest floor, pitched up toward the canopy.
 // Sway amplitude and period are owned by hooks/useIdle.js.
 export const CAMERA = {
-  position: [0, 1.0, 14],
-  pitchDeg: 17,
-  fov: 52,
+  position: [0, 0.9, 15],
+  pitchDeg: 20,
+  fov: 50,
   near: 0.1,
   far: 140,
 };
@@ -73,17 +76,24 @@ export function getCameraTarget() {
   return [x, y + Math.sin(pitch) * 20, z - Math.cos(pitch) * 20];
 }
 
+// Intensities are in three.js physical units: keyIntensity 3.0 is the equivalent of the brief's
+// 1.5 under the legacy (pi scaled) lighting mode, and ambient 0.2 sits just under the brief's 0.3
+// because the sky IBL already supplies the cool fill.
 export const LIGHT = {
   keyPosition: [8, 15, -5],
+  // Where the sun looks: a point on the trunk a little above the platform. The shadow frustum,
+  // the sky disc, the god ray axis and the particle forward scatter all derive the sun
+  // direction from keyPosition - target, so shadows and visible shafts agree.
+  target: [TREE.x + 0.8, 7, 0],
   keyColor: PALETTE.key,
-  keyIntensity: 1.5,
+  keyIntensity: 3.0,
   ambientColor: PALETTE.ambient,
-  ambientIntensity: 0.3,
+  ambientIntensity: 0.2,
 };
 
 // THREE.FogExp2 transmittance is exp(-(density * distance)^2).
-// 0.036 leaves ~76% at 15 units (treehouse clear) and ~33% at 30 units (background faded).
-export const FOG = { color: PALETTE.fog, density: 0.036 };
+// 0.028 leaves ~83% at 15 units (treehouse clear), ~49% at 30 units and ~21% at 45 (faded).
+export const FOG = { color: PALETTE.fog, density: 0.028 };
 
 // Rolling forest floor. Flattened near the hero tree and under the camera
 // so the roots and the lens never clip into a hill.
