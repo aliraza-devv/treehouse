@@ -109,8 +109,9 @@ export const CLOSE_TRUNKS = [
 ];
 
 // MID-GROUND trunks: scattered outside the path corridor. Deterministic (seeded), at least 2.3 m
-// apart, never closer than 3.2 m to the hero trunk. Moss grows on the NORTH side (-Z world side,
-// away from the camera's approach) so the moss faces the same way on every trunk.
+// apart, never closer than 3.2 m to the hero trunk. Moss grows on the NORTH side, which is the +Z
+// world side (facing the walker); the sun is south, at -Z. So the moss is visible from the path
+// and faces the same way on every trunk.
 function buildMidTrunks() {
   const rng = createRng(2024);
   const out = [];
