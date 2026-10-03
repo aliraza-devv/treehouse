@@ -20,7 +20,7 @@ Per-agent build specs (very detailed, reuse them): `docs/section-2/builder-specs
 | Treehouse glimpses | `approach/TreehouseGlimpse.jsx` | NOT STARTED |
 | Integration, tuning, budget, review, fixes | | NOT STARTED |
 
-`ApproachScene.jsx` imports the sibling components above; missing ones must be created before the build passes.
+`ApproachScene.jsx` imports the sibling components above. So the branch builds, EMPTY PLACEHOLDER files (render null, marked PLACEHOLDER at the top) stand in for: `Trunks.jsx`, `Signposts.jsx`, `StoryProps.jsx`, `TrunkSteps.jsx`, `AirAndLight.jsx` (with a no-op `LightRamp`) and `TreehouseGlimpse.jsx`. Replace each whole file with the real component (specs in `docs/section-2/builder-specs.txt`). `UnderstoryFlora.jsx` exists but is unreviewed and was possibly still being written.
 
 ## Architecture in one minute
 - `scrollState` (mutable, `src/lib/scroll/scrollStore.js`): `progress` (global 0..1, damped), `sections[id]` (local), `look.exposure/focusDistance` overrides read by PostProcessing. Read it inside `useFrame` or rAF, never React state.

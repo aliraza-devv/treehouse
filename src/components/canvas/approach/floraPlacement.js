@@ -12,7 +12,6 @@
 //   * Obstacles (trunks, stump, signposts, the boot, the log and its root plate, mushroom clusters) keep
 //     their own exclusion circles, so flora never grows through the other agents' props.
 
-import * as THREE from "three";
 import {
   pathAt,
   atPath,
@@ -28,7 +27,7 @@ import {
 import { TREE, groundHeight } from "@/lib/sceneConfig";
 import { createRng, range } from "@/lib/random";
 import { createNoise, clamp, smoothstep } from "@/lib/noise";
-import { FLORA_SEED, REGION, HERO_TRUNK_KEEP_OUT, FERNS, COVER, MUSHROOMS } from "./floraTuning";
+import { FLORA_SEED, REGION, HERO_TRUNK_KEEP_OUT, FERNS, COVER } from "./floraTuning";
 import { TONE, mixRgb, linearFromBytes } from "./floraColor";
 import { rottenStub } from "./floraLog";
 
@@ -433,7 +432,7 @@ export function* placeCover(ctx, logFrame, logDetails) {
         if (pq.dist < margin + 0.1) continue;
         if (obstacles.blocked(x, z, 0.05)) continue;
         const size = range(rng, spec.size[0], spec.size[1]);
-        out[kind].push({ x, y: groundHeight(x, z) - 0.01, z, size, yaw: rng() * TAU, tilt: range(rng, 0, 0.1), tint: greenTint(rng, 0.78, 1.12) });
+        out[kind].push({ x, y: groundHeight(x, z) - 0.01, z, size, sy: size * range(rng, 0.88, 1.15), yaw: rng() * TAU, tilt: range(rng, 0, 0.12), leanAz: rng() * TAU, tint: greenTint(rng, 0.78, 1.12) });
         n++;
       }
       patchCentres.push([cx, cz]);
@@ -469,7 +468,10 @@ export function* placeCover(ctx, logFrame, logDetails) {
       const z = cz + Math.sin(a) * r;
       path.query(x, z, pq);
       if (pq.dist < margin + 0.2 || obstacles.blocked(x, z, 0.05)) continue;
-      out.sedge.push({ x, y: groundHeight(x, z) - 0.02, z, size: range(rng, COVER.sedge.size[0], COVER.sedge.size[1]), yaw: rng() * TAU, tilt: range(rng, -0.05, 0.1), tint: greenTint(rng, 0.8, 1.1) });
+      {
+        const size = range(rng, COVER.sedge.size[0], COVER.sedge.size[1]);
+        out.sedge.push({ x, y: groundHeight(x, z) - 0.02, z, size, sy: size * range(rng, 0.9, 1.2), yaw: rng() * TAU, tilt: range(rng, 0, 0.12), leanAz: rng() * TAU, tint: greenTint(rng, 0.8, 1.1) });
+      }
     }
     yield;
   }
@@ -478,7 +480,7 @@ export function* placeCover(ctx, logFrame, logDetails) {
   yield* sample(
     COVER.bramble.count,
     (x, z, pd) => clamp(smoothstep(0.38, 0.62, F.colony(3, x + 5, z + 2, 0.25)) * (0.2 + 0.8 * F.gap(x, z)) * smoothstep(1.0, 3.2, pd) * farFade(pd) * 1.6),
-    (x, z, size) => out.bramble.push({ x, y: groundHeight(x, z) - 0.02, z, size, yaw: rng() * TAU, tint: greenTint(rng, 0.8, 1.0) }),
+    (x, z, size) => out.bramble.push({ x, y: groundHeight(x, z) - 0.02, z, size, sy: size, yaw: rng() * TAU, tilt: 0, leanAz: 0, tint: greenTint(rng, 0.8, 1.0) }),
     { sizeFn: () => range(rng, COVER.bramble.size[0], COVER.bramble.size[1]), guardMax: 6000, minPd: 2.2, pad: 0.3 },
   );
 
@@ -682,5 +684,3 @@ export function* placeAll(reach, logFrame, logDetails) {
   return { ferns, cover, mushrooms };
 }
 
-export { MUSHROOMS };
-export const _THREE_FOR_TYPES = THREE;

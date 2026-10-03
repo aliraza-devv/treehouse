@@ -249,7 +249,7 @@ export function* paintLog(frame, tiles) {
   const [W, H] = LOG.texture;
   const rgba = new Uint8ClampedArray(W * H * 4);
   const hgt = new Float32Array(W * H);
-  const bark0 = mixRgb(TONE.barkDark, TONE.stone, 0.34);
+  const bark0 = mixRgb(TONE.timberDark, TONE.stone, 0.34);
   const bark1 = mixRgb(TONE.bark, TONE.stone, 0.5);
   const wood0 = mixRgb(TONE.greyWood, TONE.stone, 0.12);
   const wood1 = mixRgb(TONE.stone, TONE.cream, 0.12);
