@@ -30,6 +30,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { CAMERA, PALETTE, TREE, groundHeight } from "@/lib/sceneConfig";
 import { createRng, range } from "@/lib/random";
+import { onPath } from "@/lib/sections/world";
 import { clamp, createNoise, mix, smoothstep } from "@/lib/noise";
 import {
   createBarkTextures,
@@ -119,6 +120,11 @@ function blocked(x, z, pad = 0, low = false) {
   if (Math.hypot(x - CAMERA.position[0], z - CAMERA.position[2]) < pocket + pad) return true;
   if (Math.hypot(x - TREE.x, z - TREE.z) < 2.3 + pad) return true;
   for (const t of BG_TREES) if (Math.hypot(x - t.x, z - t.z) < t.r * 2.6 + pad) return true;
+  // Section 2: no hero ground cover (ferns, ivy, sedge, litter) on the worn dirt path, which
+  // PathAndGround draws. onPath scans 97 path samples (about 0.15 ms), so a bounding box around the
+  // path (x -1.6 to 2.1, z 3.1 to 15, plus the clear half width and a margin) rejects nearly every
+  // candidate first. Low cover may touch the verge, tall cover keeps 0.15 m further off.
+  if (x > -3 && x < 3.5 && z > 1.8 && z < 16.5 && onPath(x, z, low ? 0 : 0.15)) return true;
   return false;
 }
 

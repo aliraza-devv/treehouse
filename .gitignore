@@ -42,3 +42,7 @@ next-env.d.ts
 
 # agent worktrees
 /.claude/worktrees/
+
+# agent scratch folders (throwaway test scripts)
+/.trunktmp/
+/.tmp*/

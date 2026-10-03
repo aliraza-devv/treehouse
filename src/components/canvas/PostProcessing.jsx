@@ -17,6 +17,7 @@ import {
 } from "@react-three/postprocessing";
 import { BlendFunction, Effect, ToneMappingMode } from "postprocessing";
 import { PALETTE, TREE } from "@/lib/sceneConfig";
+import { scrollState } from "@/lib/scroll/scrollStore";
 
 // ---------------------------------------------------------------------------
 // Photographic post stack. Order matters, and each stage is placed where it happens in a lens
@@ -188,7 +189,12 @@ export default function PostProcessing() {
     }
     const cam = state.camera;
     _toCabin.copy(CABIN_CENTER).sub(cam.position);
-    effect.circleOfConfusionMaterial.focusDistance = Math.max(4, _toCabin.length());
+    // Scroll overrides (scrollState.look, written by the rig and the active section's light controller):
+    // null means "the hero behaviour", so at progress 0 nothing here changes.
+    const look = scrollState.look;
+    effect.circleOfConfusionMaterial.focusDistance = look.focusDistance ?? Math.max(4, _toCabin.length());
+    // Exposure is a renderer property (the tone mapping chunk multiplies by it before the AgX curve).
+    state.gl.toneMappingExposure = look.exposure ?? EXPOSURE;
   });
 
   return (

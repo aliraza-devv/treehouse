@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { CAMERA, TREE, getCameraTarget } from "@/lib/sceneConfig";
+import { cameraState } from "@/lib/scroll/cameraState";
 import useReducedMotion from "@/hooks/useReducedMotion";
 
 // ---------------------------------------------------------------------------
@@ -39,6 +40,13 @@ import useReducedMotion from "@/hooks/useReducedMotion";
 //   the base axis, spanning x in about [-2.1, 7.3] around the deck (x 0.3 to 6.5) and its branches
 //   (the 17.5 above is approximate: 14 + 3.5 dolly minus the deck depth of about 0.8).
 //   There is NO pointer parallax and NO user camera control by design.
+//
+// SCROLL CAMERA (Section 2 onward)
+//   While cameraState.active (src/lib/scroll/cameraState.js, written by ScrollCameraRig with a
+//   negative useFrame priority so it runs first) the base pose is the scroll camera pose (position,
+//   look-at target, roll, fov) instead of the fixed hero pose. The sway below is applied on top of it
+//   with the same amplitudes. At progress 0 cameraState.active is false and this hook behaves exactly
+//   as before, so the hero frame is untouched.
 // ---------------------------------------------------------------------------
 
 const PORTRAIT_FOV = 62; // widest vertical FOV in degrees
@@ -75,6 +83,11 @@ function createScratch() {
     up: new THREE.Vector3(0, 1, 0),
     euler: new THREE.Euler(0, 0, 0, "YXZ"),
     swayQuat: new THREE.Quaternion(),
+    // Scroll camera base pose (used while cameraState.active)
+    rigPos: new THREE.Vector3(),
+    rigQuat: new THREE.Quaternion(),
+    rollQuat: new THREE.Quaternion(),
+    forwardZ: new THREE.Vector3(0, 0, 1),
   };
 }
 
@@ -126,28 +139,43 @@ export default function useIdle() {
     const camera = state.camera;
     const aspect = state.size.width / Math.max(1, state.size.height);
 
-    if (aspect !== s.aspect) {
-      buildBasePose(s, aspect);
-      if (camera.isPerspectiveCamera && camera.fov !== s.fov) {
-        camera.fov = s.fov;
-        camera.updateProjectionMatrix();
-      }
+    if (aspect !== s.aspect) buildBasePose(s, aspect);
+
+    // Base pose for this frame: the hero pose, or the scroll camera while it is active.
+    let basePos = s.basePos;
+    let baseQuat = s.baseQuat;
+    let fov = s.fov;
+    if (cameraState.active) {
+      s.rigPos.copy(cameraState.position);
+      s.lookMatrix.lookAt(s.rigPos, cameraState.target, s.up);
+      s.rigQuat.setFromRotationMatrix(s.lookMatrix);
+      // Roll about the view axis. Positive roll leans right (clockwise for the viewer), which is a
+      // NEGATIVE rotation about the camera's local +Z (it points back toward the viewer).
+      s.rollQuat.setFromAxisAngle(s.forwardZ, -THREE.MathUtils.degToRad(cameraState.roll));
+      s.rigQuat.multiply(s.rollQuat);
+      basePos = s.rigPos;
+      baseQuat = s.rigQuat;
+      fov = cameraState.fov;
+    }
+    if (camera.isPerspectiveCamera && Math.abs(camera.fov - fov) > 1e-6) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
     }
 
     // Reduced motion: no sway, but the base pose is still applied (and re-applied, which also
     // restores it if anything else nudged the camera).
     if (reducedRef.current) {
-      camera.position.copy(s.basePos);
-      camera.quaternion.copy(s.baseQuat);
+      camera.position.copy(basePos);
+      camera.quaternion.copy(baseQuat);
       return;
     }
 
     const time = state.clock.elapsedTime;
     // Position: base + a tiny sine per axis (world axes: x right, y up, z toward the viewer).
     camera.position.set(
-      s.basePos.x + POS_AMP * Math.sin((TAU * time) / POS_PERIOD[0] + POS_PHASE[0]),
-      s.basePos.y + POS_AMP * Math.sin((TAU * time) / POS_PERIOD[1] + POS_PHASE[1]),
-      s.basePos.z + POS_AMP * Math.sin((TAU * time) / POS_PERIOD[2] + POS_PHASE[2]),
+      basePos.x + POS_AMP * Math.sin((TAU * time) / POS_PERIOD[0] + POS_PHASE[0]),
+      basePos.y + POS_AMP * Math.sin((TAU * time) / POS_PERIOD[1] + POS_PHASE[1]),
+      basePos.z + POS_AMP * Math.sin((TAU * time) / POS_PERIOD[2] + POS_PHASE[2]),
     );
     // Rotation: small pitch (x), yaw (y) and half-strength roll (z), applied in camera space.
     s.euler.set(
@@ -156,7 +184,7 @@ export default function useIdle() {
       ROT_AMP * 0.5 * Math.sin((TAU * time) / ROT_PERIOD[2] + ROT_PHASE[2]),
     );
     s.swayQuat.setFromEuler(s.euler);
-    camera.quaternion.copy(s.baseQuat).multiply(s.swayQuat);
+    camera.quaternion.copy(baseQuat).multiply(s.swayQuat);
   });
 }
 

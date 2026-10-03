@@ -1,0 +1,608 @@
+// Geometry builders for the approach trunks. Pure three.js maths (no canvas, no React).
+//
+//   createAcc / accToGeometry     growable vertex arrays and the BufferGeometry made from them
+//   addTrunkTube                  the trunk: a swept tube with organic radius, root flare, bark UVs, vertex
+//                                 tint and the aWear attribute that drives moss, lichen and fresh wood
+//   planStubs / addStub           snapped low branches: collar swell, bark flaps peeling back, a jagged,
+//                                 splintered, pale fibrous end, dead twigs
+//   addBranchTube                 any thin curved limb (crown limbs, the overhang spray branches)
+//   planIvy                       ivy patches: card matrices, hugging runner stems, flowering umbels
+//   buildFarTrunkGeometry         the one slim trunk geometry the far trunks instance
+//
+// Winding conventions are in the comments where they matter: they are what keeps faces from vanishing.
+
+import * as THREE from "three";
+import { range } from "@/lib/random";
+import { clamp } from "@/lib/noise";
+import { DEG, TAU, shadeBark } from "./trunkMath";
+import { IVY_LOOK, TRUNK_TUNING } from "./trunkTones";
+
+const V3 = THREE.Vector3;
+
+// ------------------------------------------------------------------------------------------------
+// Accumulator
+// ------------------------------------------------------------------------------------------------
+export function createAcc() {
+  return { pos: [], nor: [], uv: [], col: [], wear: [], idx: [] };
+}
+export const accTriangles = (acc) => acc.idx.length / 3;
+export const accHasData = (acc) => acc.idx.length > 0;
+
+export function accToGeometry(acc) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(acc.pos, 3));
+  g.setAttribute("normal", new THREE.Float32BufferAttribute(acc.nor, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(acc.uv, 2));
+  g.setAttribute("color", new THREE.Float32BufferAttribute(acc.col, 3));
+  g.setAttribute("aWear", new THREE.Float32BufferAttribute(acc.wear, 4));
+  g.setIndex(acc.idx);
+  g.computeBoundingSphere();
+  g.computeBoundingBox();
+  return g;
+}
+
+function pushV(acc, p, n, u, v, tint, wear) {
+  acc.pos.push(p.x, p.y, p.z);
+  acc.nor.push(n.x, n.y, n.z);
+  acc.uv.push(u, v);
+  acc.col.push(tint[0], tint[1], tint[2]);
+  acc.wear.push(wear[0], wear[1], wear[2], wear[3]);
+  return acc.pos.length / 3 - 1;
+}
+
+// ------------------------------------------------------------------------------------------------
+// THE TRUNK
+// ------------------------------------------------------------------------------------------------
+// rings are heights above the trunk's ground (first one below ground). radial is the vertex count round.
+// Winding: the ring parameter theta runs from +X toward +Z, so round the trunk we go +X -> +Z while
+// climbing +Y, and (up) x (round) = outward. Quads are (v0, v2, v1) and (v1, v2, v3) with v0 = (ring i,
+// vertex j), v1 = (i, j+1), v2 = (i+1, j), v3 = (i+1, j+1).
+export function addTrunkTube(acc, model, rings, radial, rng) {
+  const nR = rings.length;
+  const stride = radial + 1; // the last vertex of a ring repeats the first (UV seam)
+  const P = new Float32Array(nR * stride * 3);
+  const tmp = new V3();
+  for (let i = 0; i < nR; i++) {
+    for (let j = 0; j <= radial; j++) {
+      model.pointAt(rings[i], (j / radial) * TAU, tmp);
+      const k = (i * stride + j) * 3;
+      P[k] = tmp.x;
+      P[k + 1] = tmp.y;
+      P[k + 2] = tmp.z;
+    }
+  }
+  // normals from the vertex grid: cross of the central differences, wrapping round the ring
+  const get = (i, j, out) => {
+    const k = (i * stride + (j % radial)) * 3;
+    return out.set(P[k], P[k + 1], P[k + 2]);
+  };
+  const a = new V3();
+  const b = new V3();
+  const t1 = new V3();
+  const t2 = new V3();
+  const n = new V3();
+  const N = new Float32Array(P.length);
+  for (let i = 0; i < nR; i++) {
+    for (let j = 0; j <= radial; j++) {
+      const jj = j % radial;
+      a.subVectors(get(i, (jj + 1) % radial, t1), get(i, (jj - 1 + radial) % radial, t2)); // round
+      const i0 = Math.max(i - 1, 0);
+      const i1 = Math.min(i + 1, nR - 1);
+      b.subVectors(get(i1, jj, t1), get(i0, jj, t2)); // up
+      n.crossVectors(b, a).normalize();
+      const th = (j / radial) * TAU;
+      if (n.x * Math.cos(th) + n.z * Math.sin(th) < 0) n.negate(); // never point into the trunk
+      const k = (i * stride + j) * 3;
+      N[k] = n.x;
+      N[k + 1] = n.y;
+      N[k + 2] = n.z;
+    }
+  }
+
+  // UVs: U wraps round the trunk an integer number of times (invisible seam); V is the integral of
+  // uRepeat * ds / circumference so a bark tile stays about square as the trunk tapers and flares.
+  const uRep = Math.max(1, Math.round((TAU * model.r * 1.1) / model.sp.tileW));
+  const u0 = rng();
+  const v0 = rng();
+  const c0 = new V3();
+  const c1 = new V3();
+  let prevR = 0;
+  let vAcc = 0;
+  const tint = [1, 1, 1];
+  const wear = [0, 0, 0, 0];
+  const normal = new V3();
+  const pos = new V3();
+  const base = acc.pos.length / 3;
+  let meanR = 0;
+  for (let i = 0; i < nR; i++) {
+    model.centre(rings[i], c1);
+    let sumR = 0;
+    for (let j = 0; j < radial; j++) {
+      const k = (i * stride + j) * 3;
+      sumR += Math.hypot(P[k] - c1.x, P[k + 2] - c1.z);
+    }
+    meanR = sumR / radial;
+    if (i > 0) vAcc += (uRep * c1.distanceTo(c0)) / (TAU * Math.max(0.5 * (meanR + prevR), 0.05));
+    c0.copy(c1);
+    prevR = meanR;
+    for (let j = 0; j <= radial; j++) {
+      const k = (i * stride + j) * 3;
+      pos.set(P[k], P[k + 1], P[k + 2]);
+      normal.set(N[k], N[k + 1], N[k + 2]);
+      shadeBark(model, rings[i], normal.x, normal.z, tint, wear);
+      pushV(acc, pos, normal, (j / radial) * uRep + u0, vAcc + v0, tint, wear);
+    }
+  }
+  for (let i = 0; i < nR - 1; i++) {
+    for (let j = 0; j < radial; j++) {
+      const v0i = base + i * stride + j;
+      const v1i = v0i + 1;
+      const v2i = v0i + stride;
+      const v3i = v2i + 1;
+      acc.idx.push(v0i, v2i, v1i, v1i, v2i, v3i);
+    }
+  }
+  // closing cone over the top ring (the crown leaves hide it; this just means no open tube)
+  model.centre(rings[nR - 1], c1);
+  const apexPos = new V3(c1.x, c1.y + meanR * 0.45, c1.z);
+  shadeBark(model, rings[nR - 1], 0, 0, tint, wear);
+  const apex = pushV(acc, apexPos, new V3(0, 1, 0), u0 + uRep * 0.5, vAcc + v0 + 0.1, tint, wear);
+  for (let j = 0; j < radial; j++) {
+    const vi = base + (nR - 1) * stride + j;
+    acc.idx.push(vi, apex, vi + 1); // (v0, apex, v1): outward, same sense as the side quads
+  }
+}
+
+// ------------------------------------------------------------------------------------------------
+// FRAMES for tubes that run along an arbitrary axis: E1 x E2 = axis (right handed)
+// ------------------------------------------------------------------------------------------------
+function frameOf(axis, e1Out, e2Out) {
+  const ref = Math.abs(axis.y) < 0.9 ? new V3(0, 1, 0) : new V3(1, 0, 0);
+  e1Out.crossVectors(ref, axis).normalize();
+  e2Out.crossVectors(axis, e1Out);
+}
+
+// Tube winding along +axis with phi from E1 toward E2: quad (v0, v1, v2) and (v1, v3, v2) face outward.
+// (phi-hat) x (axis) = outward when (E1, E2, axis) is right handed.
+
+// ------------------------------------------------------------------------------------------------
+// BROKEN BRANCH STUBS
+// ------------------------------------------------------------------------------------------------
+export function planStubs(model, count, rng) {
+  const close = model.spec.cls === "close";
+  const out = [];
+  const hs = [];
+  let tries = 0;
+  while (out.length < count && tries++ < 60) {
+    const h = range(rng, 0.65, 3.0);
+    if (hs.some((x) => Math.abs(x - h) < 0.5)) continue;
+    hs.push(h);
+    // mostly on the side the walker sees
+    const spread = close ? 1.3 : 2.1;
+    const theta = model.spec.pathTheta + range(rng, -spread, spread);
+    const L = close ? range(rng, 0.5, 1.1) : range(rng, 0.32, 0.92);
+    const rb = range(rng, 0.032, 0.078) * (0.75 + 0.5 * model.r);
+    out.push({
+      h,
+      theta,
+      pitch: range(rng, -14, 38) * DEG,
+      yaw: theta + range(rng, -0.28, 0.28),
+      L,
+      rb,
+      flaps: close ? 2 : rb > 0.05 ? 1 : 0,
+      twigs: 2 + Math.floor(rng() * 2),
+      lichen: rng() < 0.36,
+      ivyStrand: false,
+      high: close,
+    });
+  }
+  return out;
+}
+
+const wearScratch = [0, 0, 0, 0];
+const tintScratch = [1, 1, 1];
+
+// Builds one stub into `acc`. Returns { base, tip, dir, up } for skirts and strands.
+export function addStub(acc, model, st, rng) {
+  const N = st.high ? 7 : 6;
+  const surf = model.surface(st.h, st.theta);
+  const D = new V3(Math.cos(st.yaw) * Math.cos(st.pitch), Math.sin(st.pitch), Math.sin(st.yaw) * Math.cos(st.pitch));
+  const base = surf.p.clone().addScaledVector(surf.n, -0.07); // buried: the stub grows out of the bark
+  const E1 = new V3();
+  const E2 = new V3();
+  frameOf(D, E1, E2);
+  const L = st.L;
+  const rb = st.rb;
+
+  // rings along the stub: collar swell at the trunk, (a middle ring on the big ones), the shaft end
+  const rings = [{ a: 0, r: rb * 1.6, z: 0 }];
+  if (st.high) rings.push({ a: L * 0.45, r: rb * 1.08, z: 0 });
+  rings.push({ a: L, r: rb * 0.8, z: 0.35 });
+
+  const uo = rng();
+  const vo = rng();
+  const stride = N + 1;
+  const first = acc.pos.length / 3;
+  const dirOut = new V3();
+  const p = new V3();
+  const n = new V3();
+  const addRing = (a, r, zWood, slope) => {
+    for (let j = 0; j <= N; j++) {
+      const phi = (j / N) * TAU;
+      dirOut.copy(E1).multiplyScalar(Math.cos(phi)).addScaledVector(E2, Math.sin(phi));
+      const rr = r * (1 + 0.07 * Math.sin(phi * 3 + st.h * 9));
+      p.copy(base).addScaledVector(D, a).addScaledVector(dirOut, rr);
+      n.copy(dirOut).addScaledVector(D, -slope).normalize();
+      shadeBark(model, st.h, n.x, n.z, tintScratch, wearScratch);
+      // stubs are mossier on their upper side and carry less lichen
+      wearScratch[0] = clamp(wearScratch[0] * 0.6 + 0.3 * Math.max(0, n.y), 0, 1);
+      wearScratch[1] *= 0.6;
+      wearScratch[2] = zWood;
+      pushV(acc, p, n, (j / N) * 1 + uo, a / (TAU * rb) + vo, tintScratch, wearScratch);
+    }
+  };
+  const nr = rings.length;
+  rings.forEach((rg, k) => {
+    const prev = rings[Math.max(0, k - 1)];
+    const next = rings[Math.min(nr - 1, k + 1)];
+    const slope = next.a > prev.a ? (next.r - prev.r) / (next.a - prev.a) : 0;
+    addRing(rg.a, rg.r, rg.z, slope);
+  });
+  for (let k = 0; k < nr - 1; k++) {
+    for (let j = 0; j < N; j++) {
+      const v0 = first + k * stride + j;
+      const v1 = v0 + 1;
+      const v2 = v0 + stride;
+      const v3 = v2 + 1;
+      acc.idx.push(v0, v1, v2, v1, v3, v2);
+    }
+  }
+
+  // the break: a jagged ring of splinters, alternately long and short, pulled toward the axis, pale wood
+  const jagFirst = acc.pos.length / 3;
+  const jag = [];
+  for (let j = 0; j < N; j++) {
+    const long = j % 2 === 0;
+    jag.push({
+      da: rb * (long ? range(rng, 0.9, 1.9) : range(rng, 0.18, 0.7)),
+      shrink: long ? range(rng, 0.2, 0.42) : range(rng, 0.4, 0.7),
+      dphi: range(rng, -0.18, 0.18),
+    });
+  }
+  jag.push(jag[0]); // seam vertex
+  for (let j = 0; j <= N; j++) {
+    const jg = jag[j];
+    const phi = (j / N) * TAU + jg.dphi;
+    dirOut.copy(E1).multiplyScalar(Math.cos(phi)).addScaledVector(E2, Math.sin(phi));
+    p.copy(base).addScaledVector(D, L + jg.da).addScaledVector(dirOut, rb * 0.8 * jg.shrink);
+    n.copy(dirOut).multiplyScalar(0.55).addScaledVector(D, 0.85).normalize();
+    shadeBark(model, st.h, n.x, n.z, tintScratch, wearScratch);
+    wearScratch[2] = 1;
+    wearScratch[0] *= 0.2;
+    pushV(acc, p, n, (j / N) * 1 + uo, (L + jg.da) / (TAU * rb) + vo, tintScratch, wearScratch);
+  }
+  const lastRing = first + (nr - 1) * stride;
+  for (let j = 0; j < N; j++) {
+    const a0 = lastRing + j;
+    const b0 = jagFirst + j;
+    acc.idx.push(a0, a0 + 1, b0, a0 + 1, b0 + 1, b0);
+  }
+  // apex: the central splinter, the longest point of the break
+  const apexLen = L + rb * range(rng, 1.3, 2.3);
+  p.copy(base).addScaledVector(D, apexLen).addScaledVector(E1, range(rng, -0.01, 0.01));
+  shadeBark(model, st.h, D.x, D.z, tintScratch, wearScratch);
+  wearScratch[2] = 1;
+  const apex = pushV(acc, p, D, 0.5 + uo, apexLen / (TAU * rb) + vo, tintScratch, wearScratch);
+  for (let j = 0; j < N; j++) acc.idx.push(jagFirst + j, jagFirst + j + 1, apex);
+
+  // bark peeling back: flaps standing off the shaft near the break. Front = bark, back = pale inner bark.
+  for (let f = 0; f < st.flaps; f++) {
+    const a0 = L * range(rng, 0.5, 0.82);
+    const phi0 = range(rng, 0, TAU);
+    const dphi = range(rng, 0.45, 0.8);
+    const len = range(rng, 0.1, 0.22) * (0.6 + L);
+    const ang = range(rng, 0.6, 1.05); // how far it has curled off the shaft
+    const rAt = rb * (1.0 - 0.2 * (a0 / L));
+    const mk = (phi, along, lift, out) => {
+      dirOut.copy(E1).multiplyScalar(Math.cos(phi)).addScaledVector(E2, Math.sin(phi));
+      return out.copy(base).addScaledVector(D, along).addScaledVector(dirOut, rAt + lift);
+    };
+    const b0 = mk(phi0 - dphi, a0, 0.003, new V3());
+    const b1 = mk(phi0 + dphi, a0, 0.003, new V3());
+    const t0 = mk(phi0 - dphi * 0.75, a0 + len * Math.cos(ang) * 0.9, len * Math.sin(ang), new V3());
+    const t1 = mk(phi0 + dphi * 0.75, a0 + len * Math.cos(ang) * 0.9, len * Math.sin(ang), new V3());
+    // face normal, forced to point away from the shaft
+    const fn = new V3().crossVectors(b1.clone().sub(b0), t0.clone().sub(b0)).normalize();
+    dirOut.copy(E1).multiplyScalar(Math.cos(phi0)).addScaledVector(E2, Math.sin(phi0));
+    if (fn.dot(dirOut) < 0) fn.negate();
+    shadeBark(model, st.h, fn.x, fn.z, tintScratch, wearScratch);
+    const tf = [tintScratch[0] * 0.8, tintScratch[1] * 0.8, tintScratch[2] * 0.8];
+    // front face
+    wearScratch[2] = 0;
+    wearScratch[0] *= 0.3;
+    const fa = pushV(acc, b0, fn, 0.1 + uo, 0.2 + vo, tf, wearScratch);
+    const fb = pushV(acc, b1, fn, 0.45 + uo, 0.2 + vo, tf, wearScratch);
+    const fc = pushV(acc, t0, fn, 0.12 + uo, 0.5 + vo, tf, wearScratch);
+    const fd = pushV(acc, t1, fn, 0.43 + uo, 0.5 + vo, tf, wearScratch);
+    // (b0, b1, t0): for the face normal fn = (b1 - b0) x (t0 - b0) this is the front-facing order
+    // when fn is not flipped, and fn was flipped only if it pointed inward, so test the real winding
+    const geo = new V3().crossVectors(b1.clone().sub(b0), t0.clone().sub(b0));
+    if (geo.dot(fn) >= 0) acc.idx.push(fa, fb, fc, fb, fd, fc);
+    else acc.idx.push(fa, fc, fb, fb, fc, fd);
+    // back face: opposite winding, opposite normal, pale
+    const bn = fn.clone().negate();
+    wearScratch[2] = 0.75;
+    const ba = pushV(acc, b0, bn, 0.1 + uo, 0.2 + vo, tf, wearScratch);
+    const bb = pushV(acc, b1, bn, 0.45 + uo, 0.2 + vo, tf, wearScratch);
+    const bc = pushV(acc, t0, bn, 0.12 + uo, 0.5 + vo, tf, wearScratch);
+    const bd = pushV(acc, t1, bn, 0.43 + uo, 0.5 + vo, tf, wearScratch);
+    if (geo.dot(fn) >= 0) acc.idx.push(ba, bc, bb, bb, bc, bd);
+    else acc.idx.push(ba, bb, bc, bb, bd, bc);
+  }
+
+  // dead twigs: 3 triangle spikes (a three sided cone each) off the shaft
+  for (let t = 0; t < st.twigs; t++) {
+    const a = L * range(rng, 0.25, 0.95);
+    const phi = range(rng, 0, TAU);
+    dirOut.copy(E1).multiplyScalar(Math.cos(phi)).addScaledVector(E2, Math.sin(phi));
+    const rr = rb * (1.05 - 0.2 * (a / L));
+    const origin = base.clone().addScaledVector(D, a).addScaledVector(dirOut, rr * 0.8);
+    const dir = D.clone()
+      .multiplyScalar(range(rng, 0.4, 0.9))
+      .addScaledVector(dirOut, range(rng, 0.5, 1.2))
+      .add(new V3(0, range(rng, -0.25, 0.4), 0))
+      .normalize();
+    addTwig(acc, origin, dir, range(rng, 0.14, 0.42), range(rng, 0.006, 0.012), rng);
+  }
+
+  return { base, dir: D.clone(), L, tip: base.clone().addScaledVector(D, L), rb, E1, E2 };
+}
+
+// A thin dead twig: base ring of 3 vertices, one apex. 3 triangles.
+export function addTwig(acc, origin, dir, len, r0, rng) {
+  const E1 = new V3();
+  const E2 = new V3();
+  frameOf(dir, E1, E2);
+  const first = acc.pos.length / 3;
+  const tint = [0.86, 0.84, 0.82];
+  const wear = [0, 0, 0, 0.35];
+  const p = new V3();
+  const n = new V3();
+  const uo = rng();
+  for (let j = 0; j < 3; j++) {
+    const phi = (j / 3) * TAU + 0.4;
+    const out = E1.clone().multiplyScalar(Math.cos(phi)).addScaledVector(E2, Math.sin(phi));
+    p.copy(origin).addScaledVector(out, r0);
+    n.copy(out).addScaledVector(dir, r0 / len).normalize();
+    pushV(acc, p, n, j / 3 + uo, 0, tint, wear);
+  }
+  // the tip droops a little: dead twigs are brittle and bent
+  p.copy(origin).addScaledVector(dir, len);
+  p.y -= len * 0.08;
+  const apex = pushV(acc, p, dir, 0.5 + uo, len / (TAU * r0 * 1.5), tint, wear);
+  acc.idx.push(first, first + 1, apex, first + 1, first + 2, apex, first + 2, first, apex);
+}
+
+// ------------------------------------------------------------------------------------------------
+// GENERIC THIN BRANCH TUBE (crown limbs, spray branches)
+// ------------------------------------------------------------------------------------------------
+// pts: Vector3 polyline, radii: radius per point. `model` supplies the species and the wear noise.
+// heightOf(p) gives the height above ground used for the moss gradient.
+export function addBranchTube(acc, model, pts, radii, radial, rng, { uRepeat = 1, mossBoost = 0.25 } = {}) {
+  const n = pts.length;
+  const stride = radial + 1;
+  const first = acc.pos.length / 3;
+  const T = new V3();
+  const E1 = new V3();
+  const E2 = new V3();
+  const dirOut = new V3();
+  const p = new V3();
+  const nor = new V3();
+  const tint = [1, 1, 1];
+  const wear = [0, 0, 0, 0];
+  const uo = rng();
+  const vo = rng();
+  let vAcc = 0;
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)];
+    const b = pts[Math.min(n - 1, i + 1)];
+    T.subVectors(b, a).normalize();
+    if (i === 0) frameOf(T, E1, E2);
+    else {
+      E1.addScaledVector(T, -E1.dot(T)).normalize();
+      E2.crossVectors(T, E1);
+    }
+    if (i > 0) vAcc += (uRepeat * pts[i].distanceTo(pts[i - 1])) / (TAU * Math.max(0.5 * (radii[i] + radii[i - 1]), 0.012));
+    const slope = i < n - 1 ? (radii[i + 1] - radii[i]) / Math.max(pts[i + 1].distanceTo(pts[i]), 1e-4) : (radii[i] - radii[i - 1]) / Math.max(pts[i].distanceTo(pts[i - 1]), 1e-4);
+    for (let j = 0; j <= radial; j++) {
+      const phi = (j / radial) * TAU;
+      dirOut.copy(E1).multiplyScalar(Math.cos(phi)).addScaledVector(E2, Math.sin(phi));
+      p.copy(pts[i]).addScaledVector(dirOut, radii[i]);
+      nor.copy(dirOut).addScaledVector(T, -slope).normalize();
+      shadeBark(model, Math.max(0, pts[i].y - model.y0), nor.x, nor.z, tint, wear);
+      wear[0] = clamp(wear[0] * 0.5 + mossBoost * Math.max(0, nor.y), 0, 1);
+      pushV(acc, p, nor, (j / radial) * uRepeat + uo, vAcc + vo, tint, wear);
+    }
+  }
+  for (let i = 0; i < n - 1; i++) {
+    for (let j = 0; j < radial; j++) {
+      const v0 = first + i * stride + j;
+      const v1 = v0 + 1;
+      const v2 = v0 + stride;
+      const v3 = v2 + 1;
+      acc.idx.push(v0, v1, v2, v1, v3, v2);
+    }
+  }
+  // end cone
+  T.subVectors(pts[n - 1], pts[n - 2]).normalize();
+  p.copy(pts[n - 1]).addScaledVector(T, radii[n - 1] * 1.6);
+  shadeBark(model, Math.max(0, pts[n - 1].y - model.y0), T.x, T.z, tint, wear);
+  const apex = pushV(acc, p, T, 0.5 + uo, vAcc + vo + 0.1, tint, wear);
+  const lastRing = first + (n - 1) * stride;
+  for (let j = 0; j < radial; j++) acc.idx.push(lastRing + j, lastRing + j + 1, apex);
+}
+
+// ------------------------------------------------------------------------------------------------
+// IVY
+// ------------------------------------------------------------------------------------------------
+// Returns { cards, runners, umbels } for one trunk. Cards: { m: Matrix4 elements (16), c: [r, g, b] }.
+// Cards are 1 x 1 planes with their pivot at the bottom edge centre (see trunkBuild), scaled to width x
+// 1.25 width, stood 1 cm off the bark with the leaf tips lifting away. runners: arrays of ribbon points.
+// umbels: { p: Vector3, s: size, c: [r, g, b] } (the flowering heads at the top of a mature patch).
+const _m = new THREE.Matrix4();
+const _X = new V3();
+const _Y = new V3();
+const _Z = new V3();
+export function planIvy(model, cls, rng, { flowering = false } = {}) {
+  const spec = model.spec;
+  const close = cls === "close";
+  const patches = close ? 2 : spec.r > 0.55 ? 2 : 1;
+  const cards = [];
+  const runners = [];
+  const umbels = [];
+  const W = TRUNK_TUNING.ivyCardWidth;
+  const nPer = close ? TRUNK_TUNING.ivyCardsClose : TRUNK_TUNING.ivyCardsMid;
+  for (let pi = 0; pi < patches; pi++) {
+    const theta0 = spec.pathTheta + range(rng, -1.1, 1.1);
+    const omega = range(rng, 0.4, 0.85);
+    const h0 = range(rng, 0.15, 1.2);
+    const height = flowering && pi === 0 ? range(rng, 5.4, 6.4) : close ? range(rng, 2.2, 4.4) : range(rng, 2.4, 5.0);
+    const count = Math.round(nPer * range(rng, 0.8, 1.25) * (flowering && pi === 0 ? 1.15 : 1));
+    const seed = rng() * 50;
+    let placed = 0;
+    let tries = 0;
+    while (placed < count && tries++ < count * 8) {
+      const u = Math.pow(rng(), 1.45); // denser low down, thinning toward the top
+      const h = h0 + u * height;
+      const th = theta0 + (rng() * 2 - 1) * omega * (1 - 0.35 * u);
+      // clumps with bare bark between: a noise gate that gets stricter with height
+      const clump = model.noise.simplex3(th * 2.6 + seed, h * 0.85, seed * 0.3);
+      if (clump < -0.3 + 0.6 * u + 0.1 * rng()) continue;
+      const surf = model.surface(h, th);
+      // the leaf direction: mostly up the bark, sometimes sideways or even hanging
+      const side = _X.crossVectors(surf.up, surf.n).normalize(); // tangent round the trunk
+      const psi = rng() < 0.12 ? range(rng, -2.4, 2.4) : range(rng, -0.85, 0.85);
+      const inPlane = surf.up.clone().multiplyScalar(Math.cos(psi)).addScaledVector(side, Math.sin(psi)).normalize();
+      const tilt = range(rng, 0.14, 0.5); // the tip lifts off the bark
+      _Y.copy(inPlane).multiplyScalar(Math.cos(tilt)).addScaledVector(surf.n, Math.sin(tilt)).normalize();
+      _Z.copy(surf.n).multiplyScalar(Math.cos(tilt)).addScaledVector(inPlane, -Math.sin(tilt)).normalize();
+      _X.crossVectors(_Y, _Z).normalize();
+      const w = range(rng, W[0], W[1]) * (1 - 0.15 * u);
+      _m.makeBasis(_X.clone().multiplyScalar(w), _Y.clone().multiplyScalar(w * 1.25), _Z);
+      const origin = surf.p.clone().addScaledVector(surf.n, 0.012).addScaledVector(inPlane, -0.03);
+      _m.setPosition(origin);
+      const fresh = rng() < IVY_LOOK.freshChance * (0.6 + 0.8 * u) ? 1 : 0;
+      const val = range(rng, 0.82, 1.1);
+      const c = [0, 1, 2].map((k) => (IVY_LOOK.dark[k] + (IVY_LOOK.fresh[k] - IVY_LOOK.dark[k]) * fresh * range(rng, 0.6, 1)) * val);
+      cards.push({ m: _m.toArray(), c, h });
+      placed++;
+    }
+    // runner stems: ivy hugs the bark on thin brown ropes, climbing a little spirally
+    const nRun = close ? 2 : 1 + (rng() < 0.4 ? 1 : 0);
+    for (let r = 0; r < nRun; r++) {
+      const pts = [];
+      let th = theta0 + range(rng, -omega, omega) * 0.6;
+      const segs = 5;
+      const hTop = h0 + height * range(rng, 0.7, 0.95);
+      for (let k = 0; k <= segs; k++) {
+        const h = h0 - 0.2 + ((hTop - h0 + 0.2) * k) / segs;
+        th += range(rng, -0.12, 0.2);
+        const surf = model.surface(h, th);
+        pts.push({ p: surf.p.clone().addScaledVector(surf.n, 0.008), n: surf.n, up: surf.up, w: 0.045 * (1 - 0.6 * (k / segs)) * range(rng, 0.8, 1.2) });
+      }
+      runners.push(pts);
+    }
+    // flowering heads: umbels at the very top of the first patch of a mature, flowering ivy
+    if (flowering && pi === 0) {
+      const top = h0 + height;
+      const n = 11;
+      for (let k = 0; k < n; k++) {
+        const h = top - range(rng, -0.4, 1.4);
+        const th = theta0 + range(rng, -omega, omega) * 1.2;
+        const surf = model.surface(h, th);
+        umbels.push({
+          p: surf.p.clone().addScaledVector(surf.n, range(rng, 0.05, 0.12)),
+          s: range(rng, 0.045, 0.085),
+          c: [range(rng, 0.9, 1.15), range(rng, 0.95, 1.15), range(rng, 0.6, 0.95)],
+        });
+      }
+    }
+  }
+  return { cards, runners, umbels };
+}
+
+// Ribbon (flat strip) geometry for the runner stems. Winding verified: (a0, b0, a1), (a1, b0, b1) faces
+// along +n when a0/a1 are the -W/+W edge points of the lower ring and b0/b1 of the upper (see planIvy).
+export function addRunner(acc, pts, tintArr) {
+  const first = acc.pos.length / 3;
+  const W = new V3();
+  const wear = [0, 0, 0, 0.2];
+  const q = new V3();
+  pts.forEach((pt, i) => {
+    W.crossVectors(pt.n, pt.up).normalize();
+    for (const sgn of [-1, 1]) {
+      q.copy(pt.p).addScaledVector(W, sgn * pt.w * 0.5);
+      pushV(acc, q, pt.n, sgn < 0 ? 0 : 1, i * 0.5, tintArr, wear);
+    }
+  });
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a0 = first + i * 2;
+    const a1 = a0 + 1;
+    const b0 = a0 + 2;
+    const b1 = a0 + 3;
+    acc.idx.push(a0, b0, a1, a1, b0, b1);
+  }
+}
+
+// ------------------------------------------------------------------------------------------------
+// FAR TRUNKS: one slim unit trunk geometry (radius about 1, height 15) shared by every instance
+// ------------------------------------------------------------------------------------------------
+// Instances scale x and z by the real radius (and y a little). There is no yaw, so the moss on the +Z
+// face is on the north side of every far trunk, exactly as on the near ones.
+export function buildFarTrunkGeometry(model, rings, radial) {
+  const acc = createAcc();
+  const nR = rings.length;
+  const stride = radial + 1;
+  const first = 0;
+  const tint = [1, 1, 1];
+  const wear = [0, 0, 0, 0];
+  const p = new V3();
+  const n = new V3();
+  const uRep = 3;
+  const radiusAt = (h, th) =>
+    (1 + 0.5 * Math.exp(-Math.max(h, 0) / 0.7)) * (1 - 0.28 * Math.min(Math.max(h, 0) / 15, 1)) * (1 + 0.05 * Math.cos(2 * th + 0.7));
+  let v = 0;
+  for (let i = 0; i < nR; i++) {
+    const h = rings[i];
+    if (i > 0) v += (rings[i] - rings[i - 1]) / 0.9;
+    for (let j = 0; j <= radial; j++) {
+      const th = (j / radial) * TAU;
+      const r = radiusAt(h, th);
+      p.set(Math.cos(th) * r, h, Math.sin(th) * r);
+      // slope of the profile (finite difference) tilts the normal
+      const dr = (radiusAt(h + 0.3, th) - radiusAt(h - 0.3, th)) / 0.6;
+      n.set(Math.cos(th), -dr, Math.sin(th)).normalize();
+      shadeBark(model, h, n.x, n.z, tint, wear);
+      pushV(acc, p, n, (j / radial) * uRep, v, tint, wear);
+    }
+  }
+  for (let i = 0; i < nR - 1; i++) {
+    for (let j = 0; j < radial; j++) {
+      const v0 = first + i * stride + j;
+      const v1 = v0 + 1;
+      const v2 = v0 + stride;
+      const v3 = v2 + 1;
+      acc.idx.push(v0, v2, v1, v1, v2, v3);
+    }
+  }
+  // cone over the top
+  const topH = rings[nR - 1];
+  p.set(0, topH + 0.6, 0);
+  shadeBark(model, topH, 0, 0, tint, wear);
+  const apex = pushV(acc, p, new V3(0, 1, 0), uRep / 2, v + 0.3, tint, wear);
+  for (let j = 0; j < radial; j++) {
+    const vi = (nR - 1) * stride + j;
+    acc.idx.push(vi, apex, vi + 1);
+  }
+  return acc;
+}

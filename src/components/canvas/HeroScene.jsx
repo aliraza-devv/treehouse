@@ -10,6 +10,8 @@ import useReducedMotion from "@/hooks/useReducedMotion";
 import Atmosphere from "./Atmosphere";
 import FallingLeaves from "./FallingLeaves";
 import ForestEnvironment from "./ForestEnvironment";
+import ScrollCameraRig from "./ScrollCameraRig";
+import SectionsHost from "./SectionsHost";
 import Treehouse from "./Treehouse";
 
 // ---------------------------------------------------------------------------
@@ -178,6 +180,8 @@ export default function HeroScene() {
       <ShadowScheduler />
       <FallingLeaves />
       <CameraRig />
+      <ScrollCameraRig />
+      <SectionsHost />
     </>
   );
 }
