@@ -16,6 +16,9 @@ export const scrollState = {
   sections: {},
   // Id of the section that currently owns the camera (the one containing `progress`).
   activeId: "hero",
+  // Per-frame look overrides written by the active section's light controller and read by the
+  // post stack. null means "use the hero default". Writer: AirAndLight (LightRamp). Reader: PostProcessing.
+  look: { exposure: null, focusDistance: null },
   // Dev scrubber: when a number, the driver pins `progress` to it (set by window.__scrub in dev).
   override: null,
 };
