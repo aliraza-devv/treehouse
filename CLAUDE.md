@@ -13,6 +13,13 @@ A 3D immersive, scroll-driven landing page for Treehouse Life (treehouselife.com
 - Tailwind CSS (UI overlay)
 - TypeScript (strict)
 
+## Efficiency rules
+- Do not re-read files you already know. Read only the files the task touches.
+- Do not print full build or install output. Show errors only.
+- No screenshots or headless browser runs unless I ask.
+- Batch related edits into one pass.
+- Reuse the shared kit in src/lib/world instead of rewriting materials or helpers.
+
 ## Architecture
 - `src/app/` - Next.js App Router pages and layout
 - `src/components/canvas/` - All R3F 3D scene components
