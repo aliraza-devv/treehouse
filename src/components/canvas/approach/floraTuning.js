@@ -21,13 +21,15 @@ export const HERO_TRUNK_KEEP_OUT = 2.45;
 //            neighbouring clumps share a silhouette)
 // scale      per instance scale range (the cluster geometry is authored at scale 1)
 // cost       triangles per clump (approximate, the geometry builder reports exact numbers)
+// Garden pass: the woodland understorey is cut back to a few tidy border clumps so the walk reads as a
+// clean family garden, not a jungle. Raise the counts again to bring the wilder look back.
 export const FERNS = {
-  male: { count: 38, variants: 3, scale: [0.55, 1.5], gamma: 1.5 }, //   ~52 tris per clump
-  harts: { count: 30, variants: 2, scale: [0.6, 1.5], gamma: 1.6 }, //   ~42 tris per clump
-  bracken: { count: 24, variants: 2, scale: [0.55, 1.3], gamma: 1.5 }, // ~36 tris per clump
+  male: { count: 4, variants: 2, scale: [0.55, 1.2], gamma: 1.5 }, //   ~52 tris per clump
+  harts: { count: 3, variants: 1, scale: [0.6, 1.2], gamma: 1.6 }, //   ~42 tris per clump
+  bracken: { count: 2, variants: 1, scale: [0.55, 1.1], gamma: 1.5 }, // ~36 tris per clump
   leanDeg: [4, 18], // each clump tilts away from vertical by this much, in its own random direction
   // Clumps deliberately placed at the verge whose fronds overhang the dirt (crown always stays off it).
-  edge: { male: 4, harts: 2, bracken: 3 },
+  edge: { male: 0, harts: 0, bracken: 0 },
   overhang: 0.4, // fronds may reach this far (m) over the edge of the clear half width
   // Share of clumps that are ageing: browning, yellowing (the rest are healthy greens)
   browning: 0.07,
@@ -48,20 +50,20 @@ export const FERNS = {
 // (PATH_CLEAR_HALF_WIDTH = 0.95 m in world.js) closes most of that bare strip with moss, sedge and
 // mercury instead, with a touch more of each so the extra ground is not left thin.
 export const COVER = {
-  moss: { count: 38, size: [0.7, 1.7] }, // flat cards, 2 tris each
-  ivy: { count: 34, size: [0.55, 1.15] }, // runner cards, 4 tris each
-  mercury: { patches: 9, perPatch: [9, 16], size: [0.55, 1.0] }, // dog's mercury, 6 tris each
-  sorrel: { patches: 5, perPatch: [7, 12], size: [0.5, 0.9] }, // wood sorrel carpets, 4 tris each
-  sedge: { clumps: 9, perClump: [2, 4], size: [0.8, 1.4] }, // tufts in the light gaps, 6 tris each
-  bramble: { count: 6, size: [0.8, 1.3] }, // arching canes, 8 tris each
-  beech: { count: 64 }, // fallen beech leaves drifted in the lee of the log, 2 tris each
+  moss: { count: 12, size: [0.7, 1.2] }, // flat cards, 2 tris each (lawn edge, kept low)
+  ivy: { count: 0, size: [0.55, 1.15] }, // runner cards, 4 tris each (removed: reads as jungle)
+  mercury: { patches: 0, perPatch: [9, 16], size: [0.55, 1.0] }, // dog's mercury, 6 tris each (removed)
+  sorrel: { patches: 0, perPatch: [7, 12], size: [0.5, 0.9] }, // wood sorrel carpets, 4 tris each (removed)
+  sedge: { clumps: 0, perClump: [2, 4], size: [0.8, 1.4] }, // tufts in the light gaps, 6 tris each (removed)
+  bramble: { count: 0, size: [0.8, 1.3] }, // arching canes, 8 tris each (removed)
+  beech: { count: 0 }, // fallen beech leaves drifted in the lee of the log, 2 tris each (removed)
   pathMargin: 0.99, // ground cover keeps at least this far (m) from the centreline
   lift: 0.034, // low cards float this high over the rendered ground (it is a coarse grid, +-3 cm off groundHeight)
 };
 
 // ----- Mushrooms (about 48 tris each) ------------------------------------------------------------------
 export const MUSHROOMS = {
-  honeyOnLog: 5, // extra honey fungus caps growing from the fallen log itself
+  honeyOnLog: 0, // extra honey fungus caps growing from the fallen log itself (removed in the garden pass)
   radial: 8, // lathe segments around the cap
 };
 

@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* pinned: styles that apply only inside a wrapper the horizontal walkway has pinned (data-pinned="true") */
+@custom-variant pinned (&:where([data-pinned="true"] *));
+
 /* Treehouse Life brand colours: utilities like bg-brand-forest, text-brand-cream, border-brand-green */
 @theme {
   --color-brand-green: #6f9d68;
@@ -17,10 +20,11 @@
   --ease-expo-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* next/font exposes --font-cormorant and --font-inter on <html>; these map them to the utilities */
+/* next/font exposes --font-fraunces, --font-figtree and --font-caveat on <html>; these map them to the utilities */
 @theme inline {
-  --font-display: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
-  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-fraunces), "Fraunces", Georgia, serif;
+  --font-sans: var(--font-figtree), system-ui, sans-serif;
+  --font-hand: var(--font-caveat), "Caveat", cursive;
 }
 
 html {
@@ -28,10 +32,22 @@ html {
   color-scheme: dark;
 }
 
-/* Lenis needs native scroll behaviour off so it can smooth it itself */
+/* Lenis needs native scroll behaviour off so it can smooth it itself (these are Lenis's recommended rules) */
 html.lenis,
 html.lenis body {
   height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-scrolling iframe {
+  pointer-events: none;
 }
 
 /* While the mobile menu is open Lenis is stopped; this stops the page scrolling behind it */
@@ -46,8 +62,24 @@ html.lenis-stopped {
 }
 
 /* Soft shadows that keep cream text legible over bright mist, tinted deep forest (never black) */
+/* The display face is one family at one setting: heavy, display optical size, soft terminals, a little wonk.
+   (A utility class for weight would repeat this on every heading.) */
+@layer base {
+  .font-display {
+    font-weight: 800;
+    font-variation-settings: "opsz" 144, "SOFT" 55, "WONK" 1;
+  }
+}
+
 @utility text-shadow-hero {
   text-shadow: 0 2px 20px color-mix(in srgb, var(--color-brand-forest) 40%, transparent);
+}
+
+/* For very large type over the bright scene: a wide soft halo plus a tight one, both deep forest (never black) */
+@utility text-shadow-big {
+  text-shadow:
+    0 2px 28px color-mix(in srgb, var(--color-brand-forest) 62%, transparent),
+    0 1px 3px color-mix(in srgb, var(--color-brand-forest) 38%, transparent);
 }
 
 @utility text-shadow-logo {
@@ -124,6 +156,45 @@ html.lenis-stopped {
     visibility: visible;
     transform: none;
     animation: none;
+  }
+}
+
+/* Section 3: outlined display type (marquee places, ghost verbs) and the two small ambient loops of the
+   canopy transition. The loops only run under motion-safe: in the markup. */
+@utility text-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.5px color-mix(in srgb, var(--color-brand-cream) 45%, transparent);
+}
+
+/* One colour grade for every Section 3 photo: a touch less saturated, a little more contrast, a warm cast.
+   The black and white school photo gets the warm toned version so it sits with the colour ones. */
+@utility photo-grade {
+  filter: saturate(0.92) contrast(1.04) sepia(0.08);
+}
+
+@utility photo-grade-mono {
+  filter: sepia(0.5) saturate(1.15) contrast(1.05) brightness(0.96);
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-9deg) translateX(-3px);
+  }
+  50% {
+    transform: rotate(11deg) translateX(4px);
   }
 }
 

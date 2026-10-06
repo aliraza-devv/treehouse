@@ -1283,48 +1283,30 @@ function buildLadder() {
   const topY = 0;
   const botY = -(anchor.y - 0.35);
   const halfW = 0.225;
-  // Slight wobble in x and z; the lower end drifts a little toward the camera
-  const ropeAt = (sideSign, y) => {
-    const t = y / botY;
-    return V3(
-      sideSign * halfW + 0.035 * Math.sin(t * 2.4 + sideSign) + 0.05 * t,
-      y,
-      0.04 * Math.sin(t * 3.1 + sideSign * 1.3) + 0.09 * t * t
-    );
-  };
+  // Garden pass: a rigid timber ladder (two stringers and flat rungs) leaning from the deck edge to
+  // the lawn, as in the references. It leans toward the camera: the foot sits forward (+z) and out.
+  // Leans out at about 65 degrees from the lawn, as in the reference: the foot sits about 4 m out
+  // from the deck front. (The climb camera path in climb.js is written for this foot position.)
+  const footX = 0.4;
+  const footZ = 4.0;
+  // Point on one stringer at fraction t (0 = deck edge, 1 = foot on the lawn). Splays out a little at the foot.
+  const railAt = (sideSign, t) =>
+    V3(sideSign * (halfW + 0.12 * t) + footX * t, topY + (botY - topY) * t, footZ * t);
   for (const sideSign of [-1, 1]) {
-    const pts = [];
-    for (let k = 0; k <= 12; k++) pts.push(ropeAt(sideSign, topY + (botY - topY) * (k / 12)));
-    // weathered hemp: grey-beige and darker than fresh manila, so the ladder is not the most
-    // saturated thing on the grey trunk
-    ropeTube(rope, new THREE.CatmullRomCurve3(pts), 0.0185, 30, 5, [0.58, 0.53, 0.45]);
-    // eye bolt at the top
-    cylBetween(wood, ropeAt(sideSign, 0.02), ropeAt(sideSign, 0.02).add(V3(0, 0.08, -0.12)), 0.01, 0.01, 4, scaleC(C_IRON, 1.5), true);
+    // stringers: warm timber, slightly darker toward the lawn
+    cylBetween(wood, railAt(sideSign, 0), railAt(sideSign, 1), 0.04, 0.04, 6, scaleC(C_TRIM, 0.95), false, [0.15, 0.6]);
   }
-  const knot = new THREE.SphereGeometry(0.03, 5, 3);
-  const rungCount = 20;
-  const y0 = -0.32;
-  const y1 = botY + 0.42;
+  // closely spaced, sturdy rungs that run a little past the rails, as on the reference staircase
+  const rungCount = 17;
   for (let k = 0; k < rungCount; k++) {
-    // irregular spacing and a slight tilt per rung: nobody ties twenty rungs with a ruler
-    const y = y0 + ((y1 - y0) * k) / (rungCount - 1) + (rng() - 0.5) * 0.055;
-    const l = ropeAt(-1, y);
-    const r = ropeAt(1, y);
-    const dir = r.clone().sub(l);
-    const ext = dir.clone().normalize().multiplyScalar(0.045);
-    const a = l.clone().sub(ext);
-    const b = r.clone().add(ext);
-    const tilt = (rng() - 0.5) * 0.045;
-    a.y += tilt;
-    b.y -= tilt;
-    const tone = 0.55 + rng() * 0.25; // weathered grey-brown rungs
-    cylBetween(wood, a, b, 0.021, 0.021, 6, scaleC(C_TRIM, tone), false, [0.15, 0.6]);
-    // knots under the rope where it passes the rung, and a dark drilled hole end
-    for (const p of [l, r]) {
-      rope.geo(knot, new THREE.Matrix4().compose(p.clone().add(V3(0, -0.04, 0)), ID_Q, V3(1, 1.2, 1)), [0.55, 0.5, 0.43], [1, 1]);
-    }
+    const t = 0.08 + (0.86 * k) / (rungCount - 1) + (rng() - 0.5) * 0.008;
+    const a = railAt(-1, t).add(V3(-0.03, 0, 0));
+    const b = railAt(1, t).add(V3(0.03, 0, 0));
+    const tone = 0.95 + rng() * 0.08;
+    cylBetween(wood, a, b, 0.03, 0.03, 6, scaleC(C_TRIM, tone), false, [0.15, 0.6]);
   }
-  knot.dispose();
+  // Deck-edge fixing: a short iron bracket where the stringers meet the joists
+  cylBetween(wood, V3(-halfW, 0.0, 0), V3(halfW, 0.0, 0), 0.02, 0.02, 6, scaleC(C_IRON, 1.2), false);
   return { rope, wood, anchor };
 }
 

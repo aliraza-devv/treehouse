@@ -3,7 +3,9 @@
 import { useEffect } from "react";
 import { afterFontsReady, gsap } from "@/lib/gsap";
 import { LAYERS } from "@/lib/layers";
+import { CTA_LABEL, ENQUIRY_HREF } from "@/lib/site";
 import MobileMenu from "./MobileMenu";
+import Wordmark from "./Wordmark";
 
 const LINKS = [
   { label: "About", href: "#about" },
@@ -13,7 +15,7 @@ const LINKS = [
   { label: "Reviews", href: "#reviews" },
 ];
 
-const CTA = { label: "Start Project", href: "#contact" };
+const CTA = { label: CTA_LABEL, href: ENQUIRY_HREF };
 
 // Fixed, fully transparent bar. Logo left, links centre, one CTA right (below 768px the links
 // and the CTA live in the menu instead). A 120px forest gradient behind it keeps text legible.
@@ -53,9 +55,9 @@ export default function Navbar() {
 
         <a
           href="#top"
-          className="text-shadow-logo focus-ring pointer-events-auto relative -mx-3 justify-self-start whitespace-nowrap rounded-full px-3 py-1 font-display text-[1.6rem] leading-none font-medium md:text-[1.4rem] lg:text-[1.6rem] text-brand-cream"
+          className="text-shadow-logo focus-ring pointer-events-auto relative -mx-3 justify-self-start whitespace-nowrap rounded-full px-3 py-1 font-display text-[1.6rem] leading-none md:text-[1.4rem] lg:text-[1.6rem] text-brand-cream"
         >
-          Treehouse Life
+          <Wordmark />
         </a>
 
         <nav aria-label="Primary" className="relative hidden items-center gap-4 md:flex lg:gap-10">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { startScroll, stopScroll } from "@/lib/lenis";
 import { LAYERS } from "@/lib/layers";
+import Wordmark from "./Wordmark";
 
 const FOCUSABLE = "a[href], button:not([disabled])";
 
@@ -92,9 +93,9 @@ export default function MobileMenu({ links, cta }) {
         {/* Wordmark stays put under the overlay so the brand mark never disappears */}
         <span
           aria-hidden="true"
-          className="absolute top-0 left-6 flex h-20 items-center font-display text-[1.6rem] leading-none font-medium text-brand-cream"
+          className="absolute top-0 left-6 flex h-20 items-center font-display text-[1.6rem] leading-none text-brand-cream"
         >
-          Treehouse Life
+          <Wordmark />
         </span>
 
         {/* my-auto centres the stack when it fits and lets the panel scroll when it does not */}
@@ -106,7 +107,7 @@ export default function MobileMenu({ links, cta }) {
                 <a
                   href={link.href}
                   onClick={close}
-                  className="focus-ring block rounded-full py-2 font-display text-[2.5rem] leading-tight font-medium text-brand-cream transition-colors duration-500 ease-expo-out hover:text-brand-green-light [@media(max-height:480px)]:py-1 [@media(max-height:480px)]:text-[2rem]"
+                  className="focus-ring block rounded-full py-2 font-display text-[2.5rem] leading-tight text-brand-cream transition-colors duration-500 ease-expo-out hover:text-brand-green-light [@media(max-height:480px)]:py-1 [@media(max-height:480px)]:text-[2rem]"
                 >
                   {link.label}
                 </a>

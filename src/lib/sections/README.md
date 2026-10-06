@@ -166,3 +166,21 @@ window.__cam();                 // { position, lookAt, roll, fov, progress, acti
 `START_SPEED` / `SIGN_SPEED` / `SIGN_LEAD_M` / `END_SPEED`, `FOCUS_MIDGROUND`. Rig: `STEP_LENGTH`, `BOB_*`
 in `ScrollCameraRig.jsx`. Driver: `SMOOTH_TAU` in `driver.js`. Reveal: `REVEAL_END` and the prewarm constants
 in `reveal.js`.
+
+## Section 3: page content after the runway
+
+Not every section is a camera section. Section 3 (`src/components/ui/journey/`) is ordinary page content that
+follows `<ScrollRunway />` in `page.js`, so its text, links and anchors are real document content.
+
+- `readMaxScroll` (`driver.js`) measures the runway, not the document, so camera progress reaches 1 where the
+  runway ends and holds while the page keeps scrolling. `Journey` has a 30dvh top margin: that is the beat the
+  last camera frame is held for before the canopy curtain rises.
+- The transition (`CanopyCurtain.jsx`) is one scrubbed GSAP timeline: three canopy layers lag the page by
+  different amounts (parallax), while the fixed stage (`[data-stage]`) pushes in and fades to forest
+  (`[data-stage-dim]`).
+- `Scene.jsx` stops rendering the canvas (`frameloop="never"`) once `[data-journey-body]` is at the top of the
+  viewport, and resumes on scroll back.
+- ScrollTriggers are measured before the lazy runway mounts, so `Journey` calls `ScrollTrigger.refresh()` once
+  `[data-runway]` exists and again after fonts load.
+- Every animation sits behind `gsap.matchMedia`; reduced motion shows the final state, phones stack the
+  audience panels instead of pinning.

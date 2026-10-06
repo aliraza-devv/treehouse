@@ -14,7 +14,7 @@
 // 41 percent after t = tau, 37 percent (the 63 percent point, a "time constant") after 1.07 tau, 5 percent
 // after 2.4 tau. So tau = 0.25 s gives a time constant of about 0.27 s. Lenis already smooths the wheel,
 // so this is a gentle second layer that keeps the camera glide continuous.
-export const SMOOTH_TAU = 0.25; // seconds
+export const SMOOTH_TAU = 0.12; // seconds (Lenis already smooths the wheel: this second layer is only a short damper, a long one feels rubbery)
 // With reduced motion Lenis is off and the page scrolls natively: keep the damping short so the scene
 // follows the visitor's own scrolling closely instead of gliding after it.
 export const SMOOTH_TAU_REDUCED = 0.08;
@@ -29,10 +29,15 @@ export function readTarget(scrollY, maxScroll) {
   return maxScroll > 0 ? clamp01(scrollY / maxScroll) : 0;
 }
 
-// Maximum scroll distance in px (document height minus the viewport), at least 0.
+// Maximum scroll distance of the camera journey in px, at least 0: the END of the runway minus one
+// viewport. It is measured from the runway, not the document, because Section 3 (normal page content)
+// follows the runway: the camera must reach progress 1 where the runway ends, and then hold, while the
+// page keeps scrolling over the fixed stage. Until the runway has mounted (it loads lazily) this is 0.
 export function readMaxScroll() {
-  const doc = document.documentElement;
-  return Math.max(0, doc.scrollHeight - window.innerHeight);
+  const runway = document.querySelector("[data-runway]");
+  if (!runway) return 0;
+  const rect = runway.getBoundingClientRect();
+  return Math.max(0, rect.top + window.scrollY + rect.height - window.innerHeight);
 }
 
 // The spring's own velocity (progress units per second) lives here, not in the shared store: the store

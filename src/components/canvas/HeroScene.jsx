@@ -8,6 +8,7 @@ import { LIGHT, PALETTE, TREE } from "@/lib/sceneConfig";
 import { CameraRig } from "@/hooks/useIdle";
 import useReducedMotion from "@/hooks/useReducedMotion";
 import Atmosphere from "./Atmosphere";
+import ChildOnLawn from "./ChildOnLawn";
 import FallingLeaves from "./FallingLeaves";
 import ForestEnvironment from "./ForestEnvironment";
 import ScrollCameraRig from "./ScrollCameraRig";
@@ -176,6 +177,7 @@ export default function HeroScene() {
       <Sun />
       <Treehouse />
       <ForestEnvironment />
+      <ChildOnLawn />
       <WindClock />
       <ShadowScheduler />
       <FallingLeaves />

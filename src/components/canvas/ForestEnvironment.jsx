@@ -44,7 +44,7 @@ import {
   buildLeafClusterGeometry,
   makeFoliageMaterial,
 } from "@/lib/foliageMaterial";
-import ForegroundLeaves, { addTube, createMesher, meshToGeometry } from "./ForegroundLeaves";
+import { addTube, createMesher, meshToGeometry } from "./ForegroundLeaves";
 
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
@@ -54,6 +54,8 @@ const TEX = { ground: 384, fern: 512, leaf: 512, moss: 256 };
 // World size of one ground texture tile. The toolkit paints a tile as about 2 m of floor; 3.2 m
 // keeps leaves a believable 10 to 13 cm while repeating less often (about 62 tiles over 200 units).
 const GROUND_TILE = 3.2;
+// Vertex colour multiplier that turns the painted forest litter into a mown lawn (garden pass).
+const LAWN_TINT = [0.92, 1.04, 0.84];
 
 // Camera depth is measured from the real camera plane (CAMERA.position[2]), so a trunk placed at
 // "depth d" lands at the intended screen x whatever the camera is tuned to.
@@ -72,39 +74,30 @@ const hexOf = (a, b, t) => `#${new THREE.Color(a).lerp(new THREE.Color(b), t).ge
 // ------------------------------------------------------------------------------------------------
 // Scene layout
 // ------------------------------------------------------------------------------------------------
-// Seven detailed background trees. Positions come from (screen x, depth from camera) so the
+// Background trees. Positions come from (screen x, depth from camera) so the
 // trunks frame the hero tree instead of hiding it. depth = CAM_Z - z. "ndc" is the horizontal screen
 // position of the trunk. Nothing sits between ndc -0.1 and 0.62 at a depth under 28, which is
 // where the hero tree and cabin are.
+// Garden pass: four trees (the dense left-edge and far-left clusters are removed) so the backdrop reads
+// as a family garden with a few mature trees at its edge, not a wall of trunks.
 const BG_TREES = [
   // left edge, near: frames the frame, half out of shot
   { x: viewX(-0.92, 15), z: CAM_Z - 15, h: 27, r: 0.95, seed: 1, lean: [-0.9, -0.5] },
-  // just left of the hero trunk, mid distance, partly fogged (kept out of the hero text column)
-  { x: viewX(-0.22, 24), z: CAM_Z - 24, h: 31, r: 1.0, seed: 2, lean: [0.8, -0.6] },
-  // far left behind the text, deep in the mist
-  { x: viewX(-0.6, 38), z: CAM_Z - 38, h: 33, r: 1.05, seed: 3, lean: [-0.4, 0.5] },
   // right of the cabin, far
   { x: viewX(0.75, 30), z: CAM_Z - 30, h: 28, r: 0.95, seed: 4, lean: [0.9, -0.3] },
   // right edge, near, runs out of frame
   { x: viewX(0.95, 16), z: CAM_Z - 16, h: 26, r: 0.9, seed: 5, lean: [0.6, -0.8] },
   // deep behind the cabin: almost only a pale shadow in the mist
   { x: viewX(0.32, 45), z: CAM_Z - 45, h: 34, r: 1.1, seed: 6, lean: [0.2, 0.3] },
-  // far left edge
-  { x: viewX(-0.97, 42), z: CAM_Z - 42, h: 30, r: 1.0, seed: 7, lean: [-0.6, 0.4] },
 ];
 
 // Rocks (mossy boulders) and fallen logs. All keep clear of the camera pocket and the hero roots.
+// Garden pass: two stone garden edgings beside the lawn; the fallen logs are removed.
 const ROCKS = [
   { x: 4.9, z: 2.6, s: 0.5, seed: 1 },
-  { x: 7.6, z: -0.6, s: 0.95, seed: 2 },
   { x: -6.3, z: -1.6, s: 0.62, seed: 3 },
-  { x: -12.5, z: -7.0, s: 1.0, seed: 4 },
-  { x: 3.2, z: -6.6, s: 0.7, seed: 5 },
 ];
-const LOGS = [
-  { from: [5.6, 4.4], to: [11.2, 1.4], r: 0.42, seed: 3 }, // mid right, lies across the view
-  { from: [13.5, -6.2], to: [8.2, -9.8], r: 0.34, seed: 4 }, // behind the hero tree on the right, fogged
-];
+const LOGS = [];
 
 // ------------------------------------------------------------------------------------------------
 // Placement helpers
@@ -508,8 +501,45 @@ function axisCoords(focus, minus, plus) {
   return out;
 }
 
+// Mown lawn albedo (garden pass): fine grass blades in several greens over a base colour, with
+// alternating light and dark mowing stripes. One 3.2 m tile, repeated across the ground.
+function makeLawnTexture(size = 512) {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const g = canvas.getContext("2d");
+  const rng = createRng(606);
+  g.fillStyle = "#4f7a3d";
+  g.fillRect(0, 0, size, size);
+  // mowing stripes: bands roughly a metre wide, lighter where the mower turned
+  const bands = 8;
+  for (let i = 0; i < bands; i++) {
+    g.fillStyle = i % 2 === 0 ? "rgba(150,190,100,0.16)" : "rgba(20,50,20,0.14)";
+    g.fillRect((i * size) / bands, 0, size / bands, size);
+  }
+  // blades: short strokes leaning in a shared direction, mostly mid greens with a few bright tips
+  const palette = ["#3f6b33", "#5a8a44", "#6f9d4f", "#86b65e", "#2f5a2b"];
+  for (let i = 0; i < 9000; i++) {
+    const x = rng() * size;
+    const y = rng() * size;
+    const len = 3 + rng() * 5;
+    g.strokeStyle = palette[Math.floor(rng() * palette.length)];
+    g.globalAlpha = 0.5 + rng() * 0.5;
+    g.lineWidth = 0.9 + rng() * 0.6;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(x + (rng() - 0.5) * 2 + 1.5, y - len);
+    g.stroke();
+  }
+  g.globalAlpha = 1;
+  const texture = canvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function buildGround() {
-  const tex = createGroundTextures({ seed: 11, size: TEX.ground });
+  const lawn = makeLawnTexture(512);
   const xs = axisCoords(1, 100, 100);
   const zs = axisCoords(2, 105, 22);
   const nx = xs.length;
@@ -550,9 +580,11 @@ function buildGround() {
       const br = 1 + 0.5 * m2 + 0.3 * m3;
       // soft pool of shade under the hero canopy
       const shade = 1 - 0.3 * (1 - smoothstep(4, 18, Math.hypot(x - TREE.x, z - TREE.z)));
-      colr[k * 3] = br * shade * (1 + 0.2 * dryAmt - 0.22 * mossAmt);
-      colr[k * 3 + 1] = br * shade * (1 + 0.14 * mossAmt - 0.04 * dryAmt);
-      colr[k * 3 + 2] = br * shade * (1 - 0.14 * dryAmt - 0.18 * mossAmt);
+      // Garden pass: a mown lawn. The painted litter reads as green grass once the red is pulled down
+      // and the green lifted; the dry and moss patches are halved so the lawn stays even.
+      colr[k * 3] = LAWN_TINT[0] * br * shade * (1 + 0.1 * dryAmt - 0.11 * mossAmt);
+      colr[k * 3 + 1] = LAWN_TINT[1] * br * shade * (1 + 0.07 * mossAmt - 0.02 * dryAmt);
+      colr[k * 3 + 2] = LAWN_TINT[2] * br * shade * (1 - 0.07 * dryAmt - 0.09 * mossAmt);
     }
   }
   const idx = [];
@@ -573,21 +605,17 @@ function buildGround() {
   geometry.setAttribute("color", new THREE.BufferAttribute(colr, 3));
   geometry.setIndex(idx);
   geometry.computeBoundingSphere();
+  // Garden pass: the mown lawn replaces the forest litter (no litter normal or roughness map).
   const material = new THREE.MeshStandardMaterial({
-    map: tex.map,
-    normalMap: tex.normalMap,
-    normalScale: new THREE.Vector2(1.15, 1.15),
-    roughnessMap: tex.roughnessMap,
-    aoMap: tex.roughnessMap,
-    aoMapIntensity: 1,
-    roughness: 0.92, // damp leaf litter: the map's green channel varies it from there
+    map: lawn,
+    roughness: 0.85,
     metalness: 0,
     vertexColors: true,
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.receiveShadow = true;
   mesh.name = "forest-floor";
-  return { objects: [mesh], dispose: () => [geometry, material].forEach((r) => r.dispose()) };
+  return { objects: [mesh], dispose: () => [geometry, material, lawn].forEach((r) => r.dispose()) };
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -1074,7 +1102,8 @@ function buildBackgroundTrees() {
       inst.c.push(tint.r, tint.g, tint.b);
     };
     const p = new V();
-    for (let k = 0; k < 105; k++) {
+    // Garden pass: 40 clusters per crown (was 105), so the trees read as open garden trees, not dense jungle.
+    for (let k = 0; k < 40; k++) {
       const cosT = rng() * 2 - 1;
       const sinT = Math.sqrt(1 - cosT * cosT);
       const phi = rng() * TAU;
@@ -1084,7 +1113,7 @@ function buildBackgroundTrees() {
       addCluster(p);
     }
     for (const curve of tips) {
-      for (let k = 0; k < 12; k++) {
+      for (let k = 0; k < 4; k++) {
         const q = curve.getPointAt(range(rng, 0.4, 1));
         p.set(q.x + range(rng, -1.6, 1.6), q.y + range(rng, -0.8, 1.4), q.z + range(rng, -1.6, 1.6));
         addCluster(p);
@@ -1202,11 +1231,120 @@ function Built({ builder }) {
 }
 
 // Stages are mounted one per frame so the texture painting (the expensive part) is spread out.
-const STAGES = [buildGround, buildBackgroundTrees, buildGroundCover, buildStoneAndWood, buildFarTrees];
-// Index of buildGroundCover above: its objects (ferns, ivy, sedge, fallen leaves) sit off the Section 2
-// path corridor (see `blocked()`) and are wrapped in a named group so Section 2's HeroCull controller
-// can hide them once the walker has left the hero's static viewing pocket. See HeroCull.jsx.
-const GROUND_COVER_STAGE = STAGES.indexOf(buildGroundCover);
+// Garden pass: buildGroundCover (ferns, ivy, sedge, leaf litter) is no longer mounted, so the lawn stays
+// clear. The named "hero-ground-cover" group is therefore not rendered; HeroCull finds nothing to hide.
+// Garden boundary: a clipped hedge and a close-boarded timber fence across the back of the garden,
+// behind the background trees, plus a picnic table on the lawn. Plain instanced boxes and spheres,
+// about 1.1k triangles in total. Positions are depths from the camera (CAM_Z - z), like BG_TREES.
+function buildGardenBoundary() {
+  const boardGeo = new THREE.BoxGeometry(1, 1, 1);
+  // Low poly hedge puffs (about 48 triangles each): the hedge is far back and only reads as a mass.
+  const hedgeGeo = new THREE.SphereGeometry(1, 6, 4);
+  const timber = new THREE.MeshStandardMaterial({ color: PALETTE.wood, roughness: 0.9, metalness: 0 });
+  const hedgeMat = new THREE.MeshStandardMaterial({ color: PALETTE.leafMid, roughness: 0.95, metalness: 0 });
+  const boards = createInstances();
+  const hedge = createInstances();
+  const table = createInstances();
+  const tint = new THREE.Color();
+  const fenceZ = CAM_Z - 52;
+  const hedgeZ = CAM_Z - 49.5;
+
+  // Fence: boards 0.4 m apart (about 190 boards, 12 triangles each), 1.5 m tall, from -48 to 48 m.
+  for (let x = -48; x <= 48; x += 0.5) {
+    pushInstance(boards, [x, groundHeight(x, fenceZ) + 0.75, fenceZ], { sx: 0.12, sy: 1.5, sz: 0.03 }, tint.set(0xffffff));
+  }
+  // Clipped hedge: 1 m spheres in a single line, slightly squashed, darker than the trees.
+  const hedgeRng = createRng(909);
+  for (let x = -48; x <= 48; x += 1.5) {
+    const z = hedgeZ + (hedgeRng() - 0.5) * 0.3;
+    pushInstance(hedge, [x, groundHeight(x, z) + 0.55, z], { yaw: hedgeRng() * TAU, sx: 0.55, sy: 0.6, sz: 0.55 }, tint.set(0xffffff));
+  }
+  // Picnic table: one tabletop, two benches and four legs, placed on the lawn to the right of the hero tree.
+  const tx = 6.5;
+  const tz = 5.5;
+  const ty = groundHeight(tx, tz);
+  const yaw = 0.4;
+  const parts = [
+    { p: [0, 0.74, 0], s: [1.9, 0.06, 0.8] }, // tabletop
+    { p: [0, 0.42, -0.6], s: [1.9, 0.06, 0.32] }, // bench, front
+    { p: [0, 0.42, 0.6], s: [1.9, 0.06, 0.32] }, // bench, back
+    { p: [-0.7, 0.36, 0], s: [0.07, 0.72, 0.07] }, // legs
+    { p: [0.7, 0.36, 0], s: [0.07, 0.72, 0.07] },
+  ];
+  // Rotate each part's offset by the table yaw so the whole table turns as one piece.
+  const cy = Math.cos(yaw);
+  const sy = Math.sin(yaw);
+  for (const { p, s } of parts) {
+    const x = tx + p[0] * cy + p[2] * sy;
+    const z = tz - p[0] * sy + p[2] * cy;
+    pushInstance(table, [x, ty + p[1], z], { yaw, sx: s[0], sy: s[1], sz: s[2] }, tint.set(0xffffff));
+  }
+
+  const boardsMesh = makeInstanced(boardGeo, timber, boards, { cast: true, receive: true });
+  const hedgeMesh = makeInstanced(hedgeGeo, hedgeMat, hedge, { cast: false, receive: true });
+  const tableMesh = makeInstanced(boardGeo, timber, table, { cast: true, receive: true });
+  boardsMesh.name = "garden-fence";
+  hedgeMesh.name = "garden-hedge";
+  tableMesh.name = "garden-picnic-table";
+  return {
+    objects: [boardsMesh, hedgeMesh, tableMesh],
+    dispose: () => {
+      [boardGeo, hedgeGeo, timber, hedgeMat].forEach((r) => r.dispose());
+      boardsMesh.dispose();
+      hedgeMesh.dispose();
+      tableMesh.dispose();
+    },
+  };
+}
+
+// Garden beds: clipped shrub mounds and a row of flowers along the lawn edges, left and right of the
+// hero tree, as in the references. Low poly spheres (about 48 triangles each), about 2.5k in total.
+function buildGardenBeds() {
+  const shrubGeo = new THREE.SphereGeometry(1, 6, 4);
+  const shrubMat = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.95, metalness: 0 });
+  const flowerMat = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.8, metalness: 0 });
+  const shrubs = createInstances();
+  const flowers = createInstances();
+  const tint = new THREE.Color();
+  const rng = createRng(2024);
+  // Bed centres as [x, depth from camera]: one bed on each side of the lawn, fronting the fence line.
+  const beds = [
+    { x: -9, depth: 13, span: 4.5 },
+    { x: 10, depth: 15, span: 4.5 },
+    { x: -2, depth: 38, span: 9 }, // long border along the back, in front of the hedge
+  ];
+  for (const bed of beds) {
+    for (let i = 0; i < 12; i++) {
+      const x = bed.x + (rng() - 0.5) * bed.span * 2;
+      const z = CAM_Z - bed.depth + (rng() - 0.5) * 2.2;
+      const s = range(rng, 0.7, 1.2);
+      tint.setRGB(range(rng, 0.2, 0.3), range(rng, 0.42, 0.55), range(rng, 0.18, 0.26));
+      pushInstance(shrubs, [x, groundHeight(x, z) + s * 0.45, z], { yaw: rng() * TAU, sx: s * 1.1, sy: s * 0.85, sz: s * 1.1 }, tint);
+      // A few cream and warm-light flowers at the front of each mound.
+      for (let f = 0; f < 3; f++) {
+        const fx = x + (rng() - 0.5) * 1.2;
+        const fz = z + 0.7 + rng() * 0.5;
+        const warm = rng() < 0.5;
+        tint.set(warm ? PALETTE.leafHighlight : "#F1EEE4");
+        pushInstance(flowers, [fx, groundHeight(fx, fz) + 0.18, fz], { sx: 0.16 }, tint);
+      }
+    }
+  }
+  const shrubMesh = makeInstanced(shrubGeo, shrubMat, shrubs, { cast: false, receive: true });
+  const flowerMesh = makeInstanced(shrubGeo, flowerMat, flowers, { cast: false, receive: false });
+  shrubMesh.name = "garden-shrubs";
+  flowerMesh.name = "garden-flowers";
+  return {
+    objects: [shrubMesh, flowerMesh],
+    dispose: () => {
+      [shrubGeo, shrubMat, flowerMat].forEach((r) => r.dispose());
+      shrubMesh.dispose();
+      flowerMesh.dispose();
+    },
+  };
+}
+
+const STAGES = [buildGround, buildBackgroundTrees, buildStoneAndWood, buildFarTrees, buildGardenBoundary, buildGardenBeds];
 
 export default function ForestEnvironment() {
   const [stage, setStage] = useState(0);
@@ -1218,18 +1356,8 @@ export default function ForestEnvironment() {
 
   return (
     <group name="forest-environment">
-      {STAGES.map((builder, i) =>
-        stage > i ? (
-          i === GROUND_COVER_STAGE ? (
-            <group key={i} name="hero-ground-cover">
-              <Built builder={builder} />
-            </group>
-          ) : (
-            <Built key={i} builder={builder} />
-          )
-        ) : null,
-      )}
-      {stage > STAGES.length ? <ForegroundLeaves /> : null}
+      {STAGES.map((builder, i) => (stage > i ? <Built key={i} builder={builder} /> : null))}
+      {/* Garden pass: the large foreground fronds (ForegroundLeaves) are not mounted; they read as jungle. */}
     </group>
   );
 }

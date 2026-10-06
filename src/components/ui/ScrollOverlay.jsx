@@ -27,6 +27,19 @@ function evalBeat(b, p) {
   return { inn, out, opacity: inn * (1 - out) };
 }
 
+// A beat may name one word or phrase (`accent`) to be set in the warm brand colour.
+function accented(text, accent) {
+  const at = accent ? text.indexOf(accent) : -1;
+  if (at < 0) return text;
+  return (
+    <>
+      {text.slice(0, at)}
+      <span className="text-brand-warm">{accent}</span>
+      {text.slice(at + accent.length)}
+    </>
+  );
+}
+
 // Generic, config driven beat renderer. It owns no layout opinion beyond grouping.
 //
 // Props
@@ -153,7 +166,7 @@ export default function ScrollOverlay({
           style={{ zIndex: LAYERS.content }}
         >
           {g.beats.map((b) => {
-            const Tag = b.role === "heading" ? "h2" : "p";
+            const Tag = b.role.startsWith("heading") ? "h2" : "p";
             return (
               <Tag
                 key={b.id}
@@ -166,7 +179,7 @@ export default function ScrollOverlay({
                 // Hidden until the frame loop says otherwise, so nothing flashes before hydration
                 style={{ opacity: 0, visibility: "hidden" }}
               >
-                {b.lines ? b.lines.map((line) => <span key={line} className="block">{line}</span>) : b.text}
+                {b.lines ? b.lines.map((line) => <span key={line} className="block">{accented(line, b.accent)}</span>) : accented(b.text, b.accent)}
               </Tag>
             );
           })}

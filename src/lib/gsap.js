@@ -5,6 +5,8 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 // Register plugins once, client side only. Import gsap from here, not from "gsap".
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger, CustomEase);
+  // Phone toolbars showing and hiding resize the viewport: do not re-measure every ScrollTrigger (a visible jump) for that.
+  ScrollTrigger.config({ ignoreMobileResize: true });
   // Same curve as the --ease-expo-out CSS token: fast start, long soft landing.
   CustomEase.create("expoOut", "0.16, 1, 0.3, 1");
 }

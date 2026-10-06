@@ -16,7 +16,7 @@ import {
   wrapEffect,
 } from "@react-three/postprocessing";
 import { BlendFunction, Effect, ToneMappingMode } from "postprocessing";
-import { PALETTE, TREE } from "@/lib/sceneConfig";
+import { PALETTE } from "@/lib/sceneConfig";
 import { scrollState } from "@/lib/scroll/scrollStore";
 
 // ---------------------------------------------------------------------------
@@ -155,12 +155,16 @@ const BOKEH_SCALE = 6.5;
 // Centre of the cabin (TREE.x + CAB.cx, platform height + about 1.3, deck z). The DoF focus
 // distance is the distance to this point from the live camera (the CoC shader uses radial distance), so the treehouse is the
 // sharp plane in every pose (landscape about 16.6, portrait about 19.9 after the dolly back).
-const CABIN_CENTER = new Vector3(TREE.x + 2.5, TREE.platformY + 1.3, 0.7);
-const _toCabin = new Vector3();
+// Hero depth of field focus, in metres from the camera (see the focus line in the frame loop below).
+const HERO_FOCUS = 13;
 
-export default function PostProcessing() {
+// tier is the quality tier chosen by Scene.jsx (2 full, 1 medium, 0 low): below 2 the AO pass is dropped and the depth
+// of field is rendered at a smaller size (it is re-created, via key, when that size changes).
+export default function PostProcessing({ tier = 2 }) {
   const dof = useRef(null);
   const ao = useRef(null);
+  const useAo = ENABLE_AO && tier >= 2;
+  const dofResolution = tier >= 2 ? 0.75 : tier === 1 ? 0.6 : 0.5;
 
   // N8AO auto-detects transparent materials (mist, beams, motes, glass) and then re-renders all
   // of them into two extra full-resolution targets every frame. Our soft sheets must not occlude
@@ -171,7 +175,7 @@ export default function PostProcessing() {
       ao.current.autoDetectTransparency = false;
       ao.current.configuration.transparencyAware = false;
     }
-  }, []);
+  }, [useAo]);
 
   // Keep focus on the cabin through the portrait dolly and the idle sway, and scale the blur with
   // the drawing buffer. The bokeh radius is in pixels, so a fixed 6.5 that is a gentle 0.5 percent
@@ -187,12 +191,12 @@ export default function PostProcessing() {
       effect.bokehScale = scale;
       lastScale.current = scale;
     }
-    const cam = state.camera;
-    _toCabin.copy(CABIN_CENTER).sub(cam.position);
     // Scroll overrides (scrollState.look, written by the rig and the active section's light controller):
     // null means "the hero behaviour", so at progress 0 nothing here changes.
     const look = scrollState.look;
-    effect.circleOfConfusionMaterial.focusDistance = look.focusDistance ?? Math.max(4, _toCabin.length());
+    // Hero focus: about 13 m, between the lawn child (about 8 m) and the cabin (about 18 m), so the child
+    // reads clearly on the lawn while the trunk stays soft. Was the cabin distance (about 18 m).
+    effect.circleOfConfusionMaterial.focusDistance = look.focusDistance ?? HERO_FOCUS;
     // Exposure is a renderer property (the tone mapping chunk multiplies by it before the AgX curve).
     state.gl.toneMappingExposure = look.exposure ?? EXPOSURE;
   });
@@ -204,7 +208,7 @@ export default function PostProcessing() {
           is applied only on the last pass (n8ao decides from renderToScreen), so it stays linear
           here. The AO colour is the deep forest floor tone, so occluded areas go cool and dark
           rather than dirty black. */}
-      {ENABLE_AO && (
+      {useAo && (
         <N8AO
           ref={ao}
           quality="medium"
@@ -229,11 +233,12 @@ export default function PostProcessing() {
           fern fronds are painted with overlapping, shallowly notched pinnae so the larger discs
           have no see-through gaps to turn into bright dots. */}
       <DepthOfField
+        key={dofResolution}
         ref={dof}
         worldFocusDistance={16.4}
         worldFocusRange={9}
         bokehScale={BOKEH_SCALE}
-        resolutionScale={0.75}
+        resolutionScale={dofResolution}
       />
 
       {/* 2. Bloom. Threshold 0.85 on linear HDR, so only values that exceed display white (sun

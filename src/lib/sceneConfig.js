@@ -93,7 +93,8 @@ export const LIGHT = {
 
 // THREE.FogExp2 transmittance is exp(-(density * distance)^2).
 // 0.028 leaves ~83% at 15 units (treehouse clear), ~49% at 30 units and ~21% at 45 (faded).
-export const FOG = { color: PALETTE.fog, density: 0.028 };
+// Garden pass: lighter fog so the lawn, shrub beds and fence read clearly (was 0.028, which hid the ground).
+export const FOG = { color: PALETTE.fog, density: 0.012 };
 
 // Rolling forest floor. Flattened near the hero tree and under the camera
 // so the roots and the lens never clip into a hill.

@@ -1,5 +1,5 @@
 import hero from "@/lib/sections/hero";
-import approach from "@/lib/sections/approach";
+import climb from "@/lib/sections/climb";
 import { checkKeyframeContinuity } from "@/lib/sections/cameraPath";
 
 // ===========================================================================================
@@ -23,7 +23,8 @@ import { checkKeyframeContinuity } from "@/lib/sections/cameraPath";
 //   mountDelayFrames   optional: do not pre-mount before this many frames have rendered
 // ===========================================================================================
 
-export const SECTIONS = [hero, approach];
+// Section 2 is The Climb (climb.js). The old Approach walk stays in approach.js, unused.
+export const SECTIONS = [hero, climb];
 
 // Derive each entry's global start and end progress from the lengths. A total of zero (only anchors)
 // is guarded so nothing divides by it.
