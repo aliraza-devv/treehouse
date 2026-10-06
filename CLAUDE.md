@@ -67,3 +67,4 @@ Runs on http://localhost:3000
 npm run build
 ```
 
+At session start, read docs/STATUS.md instead of exploring the codebase.
