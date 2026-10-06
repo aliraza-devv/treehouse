@@ -9,4 +9,5 @@ export const LAYERS = {
   nav: 30, // fixed navbar
   menu: 40, // mobile menu overlay and its toggle (always above the nav)
   skip: 50, // skip-to-content link while focused
+  loader: 60, // the loader covers everything (even the skip link) until the page is ready
 };

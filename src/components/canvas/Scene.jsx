@@ -5,6 +5,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { PerformanceMonitor } from "@react-three/drei";
 import * as THREE from "three";
 import { ScrollTrigger } from "@/lib/gsap";
+import { markPart } from "@/lib/loadState";
 import { CAMERA, FOG } from "@/lib/sceneConfig";
 import HeroScene from "./HeroScene";
 import PostProcessing, { EXPOSURE } from "./PostProcessing";
@@ -111,7 +112,12 @@ export default function Scene() {
           onIncline={() => setTier((t) => Math.min(2, t + 1))}
           onFallback={() => setTier(0)}
         />
-        <FadeInTrigger onVisible={() => setVisible(true)} />
+        <FadeInTrigger
+          onVisible={() => {
+            setVisible(true);
+            markPart("scene"); // the loader waits for this
+          }}
+        />
         {DevTools && (
           <Suspense fallback={null}>
             <DevTools />

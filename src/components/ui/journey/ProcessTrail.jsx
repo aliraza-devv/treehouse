@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { ScrollTrigger, gsap } from "@/lib/gsap";
 import { STEPS } from "@/lib/site";
+import { BoardsBackdrop } from "./backdrops";
 import { LEAF_PATH } from "./canopy";
 import Polaroid from "./Polaroid";
 
@@ -18,7 +19,9 @@ function Title({ title, mark }) {
   return (
     <>
       {title.slice(0, at)}
-      <span className="relative inline-block whitespace-nowrap">
+      {/* the full stop stays with the marked words, so it can never wrap onto a line of its own */}
+      <span className="whitespace-nowrap">
+      <span className="relative inline-block">
         {mark}
         <svg
           aria-hidden="true"
@@ -39,6 +42,7 @@ function Title({ title, mark }) {
         </svg>
       </span>
       {title.slice(at + mark.length)}
+      </span>
     </>
   );
 }
@@ -53,6 +57,7 @@ function Title({ title, mark }) {
 // stretched; its y only ever increases, so a bud's place on it is found by bisection on y. Reduced motion:
 // the vine is fully drawn with every bud and leaf open, and nothing moves.
 export default function ProcessTrail() {
+  const sec = useRef(null);
   const list = useRef(null);
   const svg = useRef(null);
   const base = useRef(null);
@@ -210,10 +215,11 @@ export default function ProcessTrail() {
   }, []);
 
   return (
-    <section id="about" aria-labelledby="process-title" className="px-6 py-[16vh] md:px-8 lg:px-16">
+    <section ref={sec} id="about" aria-labelledby="process-title" className="relative px-6 py-[16vh] md:px-8 lg:px-16">
+      <BoardsBackdrop />
       <h2
         id="process-title"
-        className="max-w-4xl font-display text-[clamp(2.6rem,6vw,5.2rem)] leading-[1.04] tracking-normal text-balance text-brand-cream"
+        className="relative max-w-4xl font-display text-[clamp(2.6rem,6vw,5.2rem)] leading-[1.04] tracking-normal text-balance text-brand-cream"
       >
         From first walk to first evening up there.
       </h2>

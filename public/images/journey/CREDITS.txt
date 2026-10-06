@@ -1,7 +1,6 @@
 Journey (Section 3) photography: free stock photos from Pexels (https://www.pexels.com), used under the Pexels
 licence (free for commercial use, no attribution required). They stand in for real Treehouse Life project
 photography: replace the files (same names, 800 and 1600 px wide webp) with your own and nothing else changes.
-
 file (-800.webp / -1600.webp)   Pexels photo id
 statement-kids                   8523187
 statement-cabin                  8671356
@@ -17,5 +16,4 @@ audience-resort                  2544399
 audience-school                  35216869
 proof-dusk                       33405515
 Photo page: https://www.pexels.com/photo/<id>/
-
 step-walk, step-draw, step-build and step-climb were colour graded (one film look: faded blacks, forest-toned shadows, warm highlights, sage greens, fine grain, light vignette) so the process photos read as one shoot. Originals are the Pexels photos above (step-walk is Pexels 10365934).

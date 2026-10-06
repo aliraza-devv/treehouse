@@ -77,13 +77,17 @@ html.lenis-stopped {
 
 /* For very large type over the bright scene: a wide soft halo plus a tight one, both deep forest (never black) */
 @utility text-shadow-big {
+  /* Tight enough to sit inside the padding of a line mask (see ScrollOverlay and the hero), which clips anything wider */
   text-shadow:
-    0 2px 28px color-mix(in srgb, var(--color-brand-forest) 62%, transparent),
-    0 1px 3px color-mix(in srgb, var(--color-brand-forest) 38%, transparent);
+    0 2px 16px color-mix(in srgb, var(--color-brand-forest) 70%, transparent),
+    0 0 3px color-mix(in srgb, var(--color-brand-forest) 55%, transparent),
+    0 1px 2px color-mix(in srgb, var(--color-brand-forest) 50%, transparent);
 }
 
 @utility text-shadow-logo {
-  text-shadow: 0 1px 12px color-mix(in srgb, var(--color-brand-forest) 45%, transparent);
+  text-shadow:
+    0 1px 16px color-mix(in srgb, var(--color-brand-forest) 78%, transparent),
+    0 0 2px color-mix(in srgb, var(--color-brand-forest) 55%, transparent);
 }
 
 /* Visible keyboard focus for every interactive element. Two tone: a solid cream line with a deep
@@ -138,9 +142,102 @@ html.lenis-stopped {
 [data-intro] {
   opacity: 0;
   visibility: hidden;
-  /* Failsafe: if the GSAP reveal never runs (bundle blocked or failed), show everything after 6s.
-     The reveal is done by about 2.5s and lands on the same state, so this is invisible normally. */
-  animation: intro-failsafe 0.01s linear 6s forwards;
+  /* Failsafe: if the GSAP reveal never runs (bundle blocked or failed), show everything after 16s. That is later
+     than the loader's own hard stop (9s) plus its exit, so it never fires on a working page. */
+  animation: intro-failsafe 0.01s linear 16s forwards;
+}
+
+/* The loader. While it is up the page is held still. If its script never runs, it removes itself after 9s. */
+html[data-loading] {
+  overflow: hidden;
+}
+
+[data-loader] {
+  animation: loader-failsafe 0.01s linear 9s forwards;
+}
+
+/* The loader's drawing (Preloader.jsx, loaderArt.js). Every line is a path of pathLength 1: a dash offset of 1 is hidden and 0 is
+   drawn, and each line has its own start (--d) and length (--t). This is plain CSS on a fixed clock, so it keeps real time while the
+   page is busy booting. The lights (.loader-bulb) breathe while the page is still loading, then come on with everything lit
+   (.loader-lit) when the loader gets data-lit. */
+@keyframes loader-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes loader-fade {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes loader-wait {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+[data-loader] .loader-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: loader-draw var(--t, 0.4s) cubic-bezier(0.65, 0, 0.35, 1) var(--d, 0s) both;
+}
+
+[data-loader] .loader-pop {
+  opacity: 0;
+  animation: loader-fade var(--t, 0.2s) ease-out var(--d, 0s) forwards;
+}
+
+[data-loader] .loader-lit {
+  opacity: 0;
+  transition: opacity 0.35s ease-out;
+}
+
+[data-loader][data-lit] .loader-lit {
+  opacity: 1;
+}
+
+[data-loader] .loader-bulb {
+  opacity: 0;
+  fill: color-mix(in srgb, var(--color-brand-cream) 55%, transparent);
+  animation:
+    loader-fade 0.12s ease-out var(--d, 0.9s) forwards,
+    loader-wait 0.8s ease-in-out calc(1.15s + var(--i, 0) * 0.12s) infinite alternate;
+  transition: fill 0.3s ease-out;
+}
+
+[data-loader][data-lit] .loader-bulb {
+  animation: none;
+  opacity: 1;
+  fill: var(--color-brand-warm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-loader] .loader-draw {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  [data-loader] .loader-pop {
+    animation: none;
+    opacity: 1;
+  }
+
+  [data-loader] .loader-bulb {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+@keyframes loader-failsafe {
+  to {
+    visibility: hidden;
+    pointer-events: none;
+  }
 }
 
 @keyframes intro-failsafe {

@@ -2,8 +2,10 @@ import SceneLoader from "@/components/canvas/SceneLoader";
 import CanvasBoundary from "@/components/ui/CanvasBoundary";
 import HeroContent from "@/components/ui/HeroContent";
 import HeroFade from "@/components/ui/HeroFade";
+import HeroScrims from "@/components/ui/HeroScrims";
 import Journey from "@/components/ui/journey/Journey";
 import Navbar from "@/components/ui/Navbar";
+import Preloader from "@/components/ui/Preloader";
 import ScrollDriver, { ScrollRunway, SectionOverlays } from "@/components/ui/ScrollDriver";
 import SmoothScroll from "@/components/ui/SmoothScroll";
 import { LAYERS } from "@/lib/layers";
@@ -11,6 +13,9 @@ import { LAYERS } from "@/lib/layers";
 export default function Home() {
   return (
     <>
+      {/* The loader covers the page from the first paint until the stage, the scroll runway and the fonts are ready */}
+      <Preloader />
+
       {/* The logo links to #top: Lenis glides there (an element must exist for it to find) */}
       <div id="top" aria-hidden="true" className="absolute top-0 left-0 h-px w-px" />
 
@@ -35,18 +40,8 @@ export default function Home() {
             </CanvasBoundary>
           </div>
 
-          {/* Scrim under the text block: keeps cream copy legible over bright mist */}
-          <div
-            aria-hidden="true"
-            className="bg-scrim-hero pointer-events-none absolute inset-0"
-            style={{ zIndex: LAYERS.scrim }}
-          />
-          {/* Scrim: light bottom band behind the scroll cue */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-brand-forest/30 to-transparent"
-            style={{ zIndex: LAYERS.scrim }}
-          />
+          {/* The hero's two scrims (they keep cream copy legible over bright mist) leave with the hero copy */}
+          <HeroScrims />
 
           {/* Hero copy fades and drifts up over the first 10 percent of scroll */}
           <HeroFade>
@@ -64,28 +59,6 @@ export default function Home() {
             className="pointer-events-none absolute inset-0 bg-brand-forest opacity-0"
             style={{ zIndex: LAYERS.dim }}
           />
-
-          {/* Required credit for the CC-BY-4.0 child model (public/models/child/LICENSE.txt). Repeated in the
-              footer of Section 3, because this one is covered once the page scrolls over the stage. */}
-          <p
-            className="pointer-events-auto absolute right-3 bottom-2 max-w-[18rem] text-[10px] leading-snug text-brand-cream/60"
-            style={{ zIndex: LAYERS.content }}
-          >
-            Based on{" "}
-            <a
-              href="https://sketchfab.com/3d-models/fhc-crying-child-b60b17251195459e95c60d8992139a0c"
-              className="underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              FHC: Crying Child
-            </a>{" "}
-            by Speed F1, licensed under{" "}
-            <a href="http://creativecommons.org/licenses/by/4.0/" className="underline" target="_blank" rel="noopener noreferrer">
-              CC BY 4.0
-            </a>
-            .
-          </p>
         </div>
 
         <ScrollRunway />

@@ -50,7 +50,7 @@ export const viewport = {
 };
 
 // Without JavaScript the GSAP reveal never runs, so show the hero text as is.
-const NOSCRIPT_CSS = "[data-intro]{opacity:1!important;visibility:visible!important;transform:none!important}";
+const NOSCRIPT_CSS = "[data-intro]{opacity:1!important;visibility:visible!important;transform:none!important} [data-loader]{display:none}";
 
 export default function RootLayout({ children }) {
   return (

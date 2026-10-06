@@ -6,20 +6,20 @@ import { scrollState } from "@/lib/scroll/scrollStore";
 import { LAYERS } from "@/lib/layers";
 
 // ---- Tuning ----------------------------------------------------------------------------------
-const DEFAULT_DRIFT_PX = 22; // vertical drift of a beat entering (rises from below) and leaving (rises away)
-const EXIT_DRIFT_SCALE = 0.6; // leaving drift is shorter than the entering drift: a settle, not a throw
 const GATE_IN_TAU = 0.15; // seconds, time constant for the overlay re-appearing when its section is active
 const GATE_OUT_TAU = 0.35; // seconds, time constant for fading out once the next section owns the camera
+const LINE_STAGGER = 0.22; // each line trails the one above it by this fraction of the beat's in (and out) phase
+const RISE_PERCENT = 108; // how far a hidden line sits below (or above) its mask, in percent of its own height
 const EPS = 0.002; // minimum change worth a DOM write
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
-// Hermite smoothstep: zero slope at both ends, so fades start and finish without a visible kink
+// Hermite smoothstep: zero slope at both ends, so moves start and finish without a visible kink
 const smooth = (t) => {
   const c = clamp01(t);
   return c * c * (3 - 2 * c);
 };
 
-// Opacity and the two eased phases of one beat at section-local progress p.
+// The two eased phases of one beat at section-local progress p.
 //   inn = 0 -> 1 across enter..peakStart, out = 0 -> 1 across peakEnd..exit (never when exit is null)
 function evalBeat(b, p) {
   const inn = b.peakStart > b.enter ? smooth((p - b.enter) / (b.peakStart - b.enter)) : p >= b.enter ? 1 : 0;
@@ -43,26 +43,31 @@ function accented(text, accent) {
 // Generic, config driven beat renderer. It owns no layout opinion beyond grouping.
 //
 // Props
-//   beats            array of beats (see approach/beats.js): { id, text | lines[], role, group?, side?,
-//                    enter, peakStart, peakEnd, exit, drift?, scrim? }
+//   beats            array of beats (see climb/climbBeats.js): { id, text | lines[], role, group?, side?,
+//                    enter, peakStart, peakEnd, exit, scrim? }
 //   sectionId        key into scrollState.sections (local 0..1 progress of the owning section)
-//   roleClassNames   { heading, subline, proof, ... } Tailwind classes per role
+//   roleClassNames   { heading, subline, ... } Tailwind classes per role
 //   groupClassNames  { [group]: classes } positioning of each group container
 //   sideClassNames   { left, right } extra classes on a group container by the side of its first beat
 //   scrim            optional { className, style } soft scrim behind the copy; its opacity follows the
 //                    strongest visible beat (weighted by beat.scrim) so it breathes with the words
 //
+// How the words arrive: NOT by fading. A fade passes through grey, half see-through text over a dark scene, which
+// reads as a veil over the words. Instead every line sits in a mask (overflow hidden) and rises into place at full
+// colour, one line after the next, and rises away out of the top again on the way out: the same move the hero
+// heading makes on load. The text is therefore either fully readable or not on screen, never in between.
+//
 // How it stays in step with the camera: ONE requestAnimationFrame loop reads scrollState every frame
-// and writes opacity, transform and visibility straight onto the nodes. There are no scroll
-// listeners and no React state per frame, so a re-render can never lag behind the camera.
+// and writes transforms and visibility straight onto the nodes. There are no scroll listeners and no React
+// state per frame, so a re-render can never lag behind the camera.
 //
 // Accessibility (one approach, deliberately): the text is always in the DOM, in reading order, and a
-// beat is `visibility: hidden` whenever its opacity is 0. visibility:hidden removes it from the
+// beat is `visibility: hidden` whenever it is off screen. visibility:hidden removes it from the
 // accessibility tree and the tab order, so assistive tech reads each line once, only while it is on
 // screen, and never reads invisible text. There is no aria-hidden and no duplicated sr-only copy.
 // Pointer events are off for the whole overlay.
 //
-// Reduced motion: no drift and no smoothing tricks, just a plain cross-fade driven by progress.
+// Reduced motion: no rising, just a plain cross-fade driven by progress.
 export default function ScrollOverlay({
   beats,
   sectionId,
@@ -85,7 +90,9 @@ export default function ScrollOverlay({
     let raf = 0;
     let last = performance.now();
     let gate = 0; // smoothed 0..1: 1 while this section owns the camera
-    const cache = new Map(); // id -> last written { o, y }
+    const cache = new Map(); // id -> signature of the last written state
+    const lineEls = new Map(); // id -> the inner line nodes that rise
+    beatEls.current.forEach((el, id) => lineEls.set(id, Array.from(el.querySelectorAll("[data-line]"))));
     let scrimLast = -1;
 
     const frame = (now) => {
@@ -96,8 +103,8 @@ export default function ScrollOverlay({
       const p = scrollState.sections[sectionId] ?? 0;
       const active = scrollState.activeId === sectionId;
       // Once a later section takes over, local progress sits at 1 forever. Without the gate a beat
-      // that holds to the end (the proof line) would stay on screen for the rest of the page, so it
-      // is faded out over a few tenths of a second after the camera moves on.
+      // that holds to the end would stay on screen for the rest of the page, so it is taken away over a few
+      // tenths of a second after the camera moves on.
       const tau = active ? GATE_IN_TAU : GATE_OUT_TAU;
       gate += ((active ? 1 : 0) - gate) * (1 - Math.exp(-dt / tau));
       if (gate < 0.001) gate = 0;
@@ -110,23 +117,28 @@ export default function ScrollOverlay({
         const el = beatEls.current.get(b.id);
         if (!el) continue;
         const { inn, out, opacity } = evalBeat(b, p);
-        const o = opacity * gate;
-        const drift = noMotion ? 0 : (b.drift ?? DEFAULT_DRIFT_PX);
-        // Rises into place from below on entry, keeps rising (less) on exit, like the hero copy leaving
-        const y = (1 - inn) * drift - out * drift * EXIT_DRIFT_SCALE;
-        scrimOpacity = Math.max(scrimOpacity, o * (b.scrim ?? 1));
+        const shown = opacity * gate;
+        scrimOpacity = Math.max(scrimOpacity, shown * (b.scrim ?? 1));
 
-        const prev = cache.get(b.id);
-        if (prev && Math.abs(prev.o - o) < EPS && Math.abs(prev.y - y) < 0.05 && (o > 0) === (prev.o > 0)) continue;
-        cache.set(b.id, { o, y });
-        if (o <= 0) {
-          el.style.visibility = "hidden";
-          el.style.opacity = "0";
+        const signature = `${(inn * 500) | 0}/${(out * 500) | 0}/${(gate * 500) | 0}/${noMotion ? 1 : 0}`;
+        if (cache.get(b.id) === signature) continue;
+        cache.set(b.id, signature);
+
+        const lines = lineEls.get(b.id) ?? [];
+        el.style.visibility = shown > 0.001 ? "visible" : "hidden";
+        if (noMotion) {
+          el.style.opacity = shown.toFixed(3);
+          for (const line of lines) line.style.transform = "none";
         } else {
-          el.style.visibility = "visible";
-          el.style.opacity = o.toFixed(3);
+          el.style.opacity = "1";
+          const spread = 1 + LINE_STAGGER * (lines.length - 1);
+          lines.forEach((line, i) => {
+            const rise = clamp01(Math.min(inn, gate) * spread - LINE_STAGGER * i); // 0 below the mask -> 1 in place
+            const leave = clamp01(out * spread - LINE_STAGGER * i); // 0 in place -> 1 above the mask
+            const y = (1 - rise) * RISE_PERCENT - leave * RISE_PERCENT;
+            line.style.transform = Math.abs(y) < 0.01 ? "none" : `translate3d(0, ${y.toFixed(2)}%, 0)`;
+          });
         }
-        el.style.transform = y === 0 ? "none" : `translate3d(0, ${y.toFixed(2)}px, 0)`;
       }
 
       const s = scrimEl.current;
@@ -167,6 +179,7 @@ export default function ScrollOverlay({
         >
           {g.beats.map((b) => {
             const Tag = b.role.startsWith("heading") ? "h2" : "p";
+            const lines = b.lines ?? [b.text];
             return (
               <Tag
                 key={b.id}
@@ -179,7 +192,15 @@ export default function ScrollOverlay({
                 // Hidden until the frame loop says otherwise, so nothing flashes before hydration
                 style={{ opacity: 0, visibility: "hidden" }}
               >
-                {b.lines ? b.lines.map((line) => <span key={line} className="block">{accented(line, b.accent)}</span>) : accented(b.text, b.accent)}
+                {lines.map((line) => (
+                  // The mask. The padding and the matching negative margin keep descenders inside it without
+                  // changing the line spacing.
+                  <span key={line} className="block overflow-hidden px-[0.25em] pb-[0.14em] -mx-[0.25em] -mb-[0.14em]">
+                    <span data-line className="block will-change-transform">
+                      {accented(line, b.accent)}
+                    </span>
+                  </span>
+                ))}
               </Tag>
             );
           })}

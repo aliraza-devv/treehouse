@@ -5,6 +5,8 @@ import { ScrollTrigger, afterFontsReady } from "@/lib/gsap";
 import { LAYERS } from "@/lib/layers";
 import Audience from "./Audience";
 import CanopyCurtain from "./CanopyCurtain";
+import Faq from "./Faq";
+import FinalCta from "./FinalCta";
 import ProcessTrail from "./ProcessTrail";
 import ProofBand from "./ProofBand";
 import SiteFooter from "./SiteFooter";
@@ -19,9 +21,9 @@ import Statement from "./Statement";
 //   canopy curtain   the parallax transition (CanopyCurtain.jsx)
 //   [data-journey-body] solid forest from here down; Scene.jsx stops rendering the canvas once this is
 //                       at the top of the viewport (it is fully covered, so the GPU is free for the page)
-//   statement, process, audience, proof, footer
+//   statement, process, audience, proof, questions, the final invitation, footer
 //
-// Anchors for the navbar: #about (process), #products (audiences), #projects (proof). The navbar's Start Project
+// Anchors for the navbar: #about (process), #products (audiences), #projects (proof), plus #faq and #contact. The navbar's Start Project
 // button goes to ENQUIRY_HREF (src/lib/site.js).
 export default function Journey() {
   // The runway (and so the page height) arrives after hydration, in its own lazy chunk, so every
@@ -51,6 +53,8 @@ export default function Journey() {
         <ProcessTrail />
         <Audience />
         <ProofBand />
+        <Faq />
+        <FinalCta />
         <SiteFooter />
       </div>
     </div>

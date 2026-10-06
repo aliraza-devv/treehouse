@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, createRef } from "react";
+import { markPart } from "@/lib/loadState";
 
 // A calm deep forest to moss wash. It always sits behind the canvas (so there is never a blank
 // frame while the scene loads) and is all that remains if WebGL fails.
@@ -38,12 +39,14 @@ export default class CanvasBoundary extends Component {
 
   componentDidCatch(error) {
     console.warn("WebGL scene unavailable, showing the static fallback.", error);
+    markPart("scene"); // nothing to wait for: the loader may go
   }
 
   componentDidMount() {
     const supported = hasWebGL();
     if (!supported) console.warn("WebGL is not available, showing the static fallback.");
     this.setState({ supported });
+    if (!supported) markPart("scene"); // nothing to wait for: the loader may go
 
     // webglcontextlost does not bubble, but an ancestor can hear it in the capture phase.
     this.root.current?.addEventListener("webglcontextlost", this.handleContextLost, true);
@@ -54,6 +57,7 @@ export default class CanvasBoundary extends Component {
   }
 
   handleContextLost = () => {
+    markPart("scene");
     this.setState({ failed: true });
   };
 

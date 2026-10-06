@@ -35,8 +35,8 @@ export default function Awards({ className = "grid gap-x-8 gap-y-10 sm:grid-cols
   return (
     <ul role="list" aria-label="Awards" className={className}>
       {AWARDS.map((award) => (
-        <li key={award.id} data-award className="flex flex-col items-start gap-4">
-          <div className="relative size-32 shrink-0">
+        <li key={award.id} data-award className="flex flex-col items-start gap-5">
+          <div className="relative size-40 shrink-0">
             <svg aria-hidden="true" viewBox="0 0 120 120" className="absolute inset-0 h-full w-full overflow-visible">
               <Branch />
               <g transform="translate(120 0) scale(-1 1)">
@@ -44,8 +44,8 @@ export default function Awards({ className = "grid gap-x-8 gap-y-10 sm:grid-cols
               </g>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center pt-1">
-              <span className="font-display text-[2.1rem] leading-none text-brand-cream lining-nums">{award.year}</span>
-              <span className="mt-1 text-[10px] font-medium tracking-[0.14em] text-brand-warm uppercase">Winner</span>
+              <span className="font-display text-[1.45rem] leading-none text-brand-cream lining-nums">{award.year}</span>
+              <span className="mt-2 text-[8.5px] font-medium tracking-[0.2em] text-brand-warm uppercase">Winner</span>
             </div>
           </div>
           <div>

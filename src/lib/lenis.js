@@ -31,6 +31,8 @@ export function initLenis() {
     autoRaf: false,
   });
   instance = lenis;
+  // The loader holds the page still; Lenis initialises after it has asked for that, so honour it here.
+  if (document.documentElement.dataset.loading) lenis.stop();
   lenis.on("scroll", ScrollTrigger.update);
 
   // GSAP ticker time is in seconds, Lenis expects milliseconds.

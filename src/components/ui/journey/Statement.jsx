@@ -66,7 +66,7 @@ export default function Statement() {
       {/* The mist: decorative, faded out top and bottom so it never shows an edge */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-[-8%] h-[116%] opacity-40 [mask-image:linear-gradient(to_bottom,transparent,black_28%,black_72%,transparent)]"
+        className="pointer-events-none absolute inset-x-0 top-[-8%] h-[116%] opacity-40 [mask-image:linear-gradient(to_bottom,transparent,black_22%,black_46%,transparent_84%)]"
       >
         <div data-mist className="h-full w-full">
           <Photo name="statement-mist" sizes="100vw" className="h-full w-full object-cover" />

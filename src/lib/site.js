@@ -109,3 +109,35 @@ export const AWARDS = [
   { id: "business-excellence-2022", year: "2022", title: "Best Rope Bridges & Treehouse Design / Build Company", body: "Business Excellence Awards, Acquisition International" },
   { id: "lux-2021", year: "2021", title: "Best Bespoke Tree-House Builders", body: "LUX Magazine Travel & Tourism Awards" },
 ];
+
+// The questions people ask before they start. Every answer uses only what the owner brief says (one team designs and
+// builds, every design is bespoke, the four things built, the kinds of client, 250+ projects on 5 continents, the real
+// places). None of them promises a price, a timeline, a material or a safety claim.
+// TODO(owner): approve this copy, and add real answers on price and timing if you want them on the page.
+export const FAQ = [
+  {
+    id: "build",
+    q: "What do you build?",
+    a: "Treehouses, rope bridges, treetop walkways and nest swings, for family gardens, private estates, resorts and schools.",
+  },
+  {
+    id: "bespoke",
+    q: "Is every treehouse bespoke?",
+    a: "Yes. Every design is drawn for your tree, your family and the way you want to use it. We start by walking your garden, before a line is drawn.",
+  },
+  {
+    id: "team",
+    q: "Do you design it and build it?",
+    a: "Both, with one team. The people who design your treehouse are the people who build it, so nothing gets lost between the drawing and the garden.",
+  },
+  {
+    id: "where",
+    q: "Where do you build?",
+    a: "Across the UK and beyond: more than 250 projects on 5 continents, from Surrey and Lake Como to Quebec and the Seychelles.",
+  },
+  {
+    id: "cost",
+    q: "What will it cost, and how long will it take?",
+    a: "That depends on the tree, the design and the site, so the honest answer comes after we have walked the garden. Start a project and we will talk it through.",
+  },
+];
