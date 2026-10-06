@@ -39,15 +39,23 @@ export const FERNS = {
 };
 
 // ----- Ground cover (all beyond the path) --------------------------------------------------------------
+// pathMargin used to leave a bare strip of the hero's own forest floor between the worn dirt (edge at
+// PATH_WIDTH / 2 = 0.85 m) and where cover was allowed to start (1.12 m): close enough to the path that
+// the walking camera weaves right over it (WEAVE_AMPLITUDE 0.4 m either side of the centreline), so that
+// strip's floor texture (a 3.2 m hero tile, de-tiled only by a low frequency fbm tuned for the hero's
+// static 15 m+ camera) read as an obvious repeat up close, exactly the "flat ground... script-placed"
+// tell CLAUDE.md calls out. Pulling cover in to just past the already-clear path corridor
+// (PATH_CLEAR_HALF_WIDTH = 0.95 m in world.js) closes most of that bare strip with moss, sedge and
+// mercury instead, with a touch more of each so the extra ground is not left thin.
 export const COVER = {
-  moss: { count: 30, size: [0.7, 1.7] }, // flat cards, 2 tris each
+  moss: { count: 38, size: [0.7, 1.7] }, // flat cards, 2 tris each
   ivy: { count: 34, size: [0.55, 1.15] }, // runner cards, 4 tris each
-  mercury: { patches: 7, perPatch: [9, 16], size: [0.55, 1.0] }, // dog's mercury, 6 tris each
+  mercury: { patches: 9, perPatch: [9, 16], size: [0.55, 1.0] }, // dog's mercury, 6 tris each
   sorrel: { patches: 5, perPatch: [7, 12], size: [0.5, 0.9] }, // wood sorrel carpets, 4 tris each
-  sedge: { clumps: 6, perClump: [2, 4], size: [0.8, 1.4] }, // tufts in the light gaps, 6 tris each
+  sedge: { clumps: 9, perClump: [2, 4], size: [0.8, 1.4] }, // tufts in the light gaps, 6 tris each
   bramble: { count: 6, size: [0.8, 1.3] }, // arching canes, 8 tris each
   beech: { count: 64 }, // fallen beech leaves drifted in the lee of the log, 2 tris each
-  pathMargin: 1.12, // ground cover keeps at least this far (m) from the centreline
+  pathMargin: 0.99, // ground cover keeps at least this far (m) from the centreline
   lift: 0.034, // low cards float this high over the rendered ground (it is a coarse grid, +-3 cm off groundHeight)
 };
 

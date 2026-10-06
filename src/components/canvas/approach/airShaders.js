@@ -94,12 +94,16 @@ export const SHAFT_FRAG = /* glsl */ `
     float v = clamp(vAlong, 0.0, 1.0);
 
     // Ragged edges: the beam wanders sideways a little along its length and over time, so its sides are
-    // never two straight lines.
+    // never two straight lines. A wider wander than the beam's own half width keeps the boundary from
+    // ever reading as one straight wavering line (the original 0.55 was not quite enough at this gain).
     float wob = fbm(vec2(vAlong * 2.2 + seed * 9.0, uTime * 0.03 + seed * 4.0)) - 0.47;
-    float across = 1.0 - abs(vX + wob * 0.55);
-    // Soft profile: smoothly 0 at the edges, a broad core, no visible edge line.
-    float prof = smoothstep(0.0, 0.8, clamp(across, 0.0, 1.0));
-    prof *= prof;
+    float across = 1.0 - abs(vX + wob * 0.8);
+    // Soft profile: 0 exactly at the quad's own geometric edge (across = 0, so the mesh silhouette itself
+    // is never visible), ramping up over MOST of the half width instead of the old narrow, squared curve
+    // (smoothstep(0, 0.8, x) then x*x), which compressed most of the width into a flat bright plateau and
+    // read as a crisp, panel-like "sail" at this additive gain (s2-p040/p050/p060). A single, wider
+    // smoothstep with no extra squaring spreads the rise across the whole width instead.
+    float prof = smoothstep(0.0, 0.95, clamp(across, 0.0, 1.0));
 
     // Density streaks: stretched along the beam (high frequency across, low along), sliding up slowly, as if
     // light were cut into rods by the leaves and broke up in the mist. A second finer layer moves the other way.

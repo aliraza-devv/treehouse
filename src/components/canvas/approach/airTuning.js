@@ -27,8 +27,11 @@ export const WALKER_SHADOW = {
   yMax: 20, // high enough that the hero crown (18 m) still shades
   nearExtra: 6, // metres the near plane is pulled toward the sun so canopy casters over the sunward edge are not clipped
   blendEnd: 0.06, // local approach progress at which the walker box is fully in (hero box at 0)
-  radiusEnd: 6, // shadow.radius at the walker box. Real leaf shadows from 10 m up have a ~10 cm penumbra,
-  // about 14 texels at 7 mm per texel. 6 is a compromise (more makes the Vogel disk noisy).
+  radiusEnd: 4.5, // shadow.radius at the walker box. Real leaf shadows from 10 m up have a ~10 cm penumbra,
+  // about 14 texels at 7 mm per texel. 6 blurred the dapple on the ground and trunks into a near-flat
+  // wash in the s2-p040..p075 renders (CLAUDE.md: "dappled moving shadows... never a single flat
+  // light"); 4.5 keeps the kernel wide enough to stay smooth (not noisy, per the original comment)
+  // while letting individual leaf-shaped shadow shapes actually read at ground level.
   refreshEvery: 6, // frames between shadow map refreshes while active (the hero schedule is also 6)
   centreRate: 3, // 1/s: how quickly the box centre follows its target (smooths the camera weave)
 };
@@ -50,7 +53,9 @@ export const CANOPY = {
   seed: 5081,
   clumps: 96, // total clumps (cards x 2 triangles each). More = more shade. 96 shades about 55 percent of the dirt (45 lit) before trunks and the hero crown add theirs.
   cards: 1, // leaf cards per clump (1 card = 2 triangles, so about 240 triangles in all). 2 cards makes solid masses.
-  denseShare: 0.45, // share of clumps using the dense leaf mat (the rest use the broken, more open mat)
+  denseShare: 0.56, // share of clumps using the dense leaf mat (the rest use the broken, more open mat). Raised a
+  // little: combined with the tighter shadow.radius above, more of the clumps now cast a crisper,
+  // darker shadow shape instead of the mass reading as one soft grey pool.
   altitude: [9, 15], // metres above the ground
   size: [1.1, 2.2], // card width in metres (a leaf is 10 to 15 percent of it, so 11 to 33 cm, softened by the penumbra)
   minSpacing: 0.6, // minimum distance between landing points (clumps may still overlap through their size)

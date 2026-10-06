@@ -29,10 +29,15 @@ const GROUP_CLASSES = {
   proof: "absolute inset-x-0 bottom-12 px-6 md:px-8 lg:px-16 max-md:bottom-14 max-md:mx-auto max-md:max-w-[22rem]",
 };
 
-// Very soft deep-forest radial scrim (about 45 percent at its core, fading to nothing), built from the
-// brand token so there is no hard-coded colour. Anchored behind the left-hand copy; centred low on phones.
+// Deep-forest radial scrim behind the left-hand copy, built from the brand token so there is no
+// hard-coded colour. The camera's S-curve weave (weaveLateral in approach.js) periodically swings a
+// close trunk into the screen-left third, exactly where the heading and subline sit (APPROACH_BEATS
+// keeps them on screen past local progress 0.5): a soft 45 percent scrim was not reliably enough to
+// read the copy over lit bark at that phase of the weave. This is darker at its core (72 percent,
+// still built from the brand token, never flat black) and a little wider, so legibility no longer
+// depends on what the weave happens to be showing behind the text. Centred low on phones.
 const SCRIM_CLASS =
-  "bg-[radial-gradient(ellipse_55%_46%_at_12%_70%,color-mix(in_srgb,var(--color-brand-forest)_45%,transparent),transparent_72%)] max-md:bg-[radial-gradient(ellipse_95%_42%_at_50%_86%,color-mix(in_srgb,var(--color-brand-forest)_45%,transparent),transparent_74%)]";
+  "bg-[radial-gradient(ellipse_62%_52%_at_14%_68%,color-mix(in_srgb,var(--color-brand-forest)_72%,transparent),transparent_78%)] max-md:bg-[radial-gradient(ellipse_98%_46%_at_50%_86%,color-mix(in_srgb,var(--color-brand-forest)_72%,transparent),transparent_80%)]";
 
 export default function ApproachOverlay() {
   return (

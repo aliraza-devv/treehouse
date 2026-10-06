@@ -109,7 +109,16 @@ const D_HERO = 20;
 const D_WALK = 14;
 const BASE_PITCH = (s) => (3 + 1.8 * Math.sin(TAU * s * 1.7 + 0.8)) * DEG; // 1.2 to 4.8 degrees, never constant
 
-const SIGN_GLANCE_MAX = 16 * DEG;
+// Widened from the original 16 degrees / 5 m: numerically the old schedule already pointed the view
+// axis within a degree of a sign at its closest approach, but none of the four ever actually read in
+// a captured frame (s2-p000..p090) the owner's brief calls them the section's one credibility beat, so
+// a sign that is dead ahead for only a few hundredths of path fraction, at a narrow glance angle, is
+// too easy for the Catmull-Rom spline between keyframes to blend away, or for the weave/pitch schedule
+// to be mid-transition over the same stretch. Wider angle and a longer engagement window give the
+// glance more of the walk to actually win out and hold.
+const SIGN_GLANCE_MAX = 26 * DEG;
+const SIGN_NEAR_START_M = 7.5; // glance starts engaging this far from the sign (was 5)
+const SIGN_NEAR_PEAK_M = 4.5; // and is at full weight by here (was 3.2)
 
 // Glimpse windows: the camera lifts its gaze up through the gaps toward the cabin. The window rises
 // over 0.05 of the path, holds for 0.024, and falls over 0.05 (about 0.7 m each way). The last one
@@ -190,11 +199,19 @@ export function buildApproachKeyframes(aspect) {
     const ahead = pathAt(Math.min(1, s + LOOK_AHEAD_M / PATH_LENGTH));
     const baseYaw = bearing(base, ahead.x, ahead.z);
     let yaw = baseYaw;
+    // How strongly a sign has the camera's attention right now (the largest near*ahead weight across
+    // the four boards): used below to keep the treehouse glimpse from overriding a sign glance in
+    // progress. Lake Como (s = 0.41) and Quebec (s = 0.61) both sit inside a glimpse's own rise/hold/
+    // fall window (GLIMPSES s = 0.44 and 0.58, +-0.062 each), so without this the cabin glance's yaw
+    // pull (below) simply won out every time and neither sign ever read in a captured frame.
+    let signEngage = 0;
     for (const sign of SIGN_POINTS) {
       const toSign = wrapPi(bearing(base, sign.x, sign.z) - baseYaw);
-      const near = smooth(5, 3.2, Math.hypot(sign.x - base.x, sign.z - base.z));
-      const ahead = 1 - smooth(60 * DEG, 100 * DEG, Math.abs(toSign));
-      yaw += near * ahead * THREE.MathUtils.clamp(0.5 * toSign, -SIGN_GLANCE_MAX, SIGN_GLANCE_MAX);
+      const near = smooth(SIGN_NEAR_START_M, SIGN_NEAR_PEAK_M, Math.hypot(sign.x - base.x, sign.z - base.z));
+      const signAhead = 1 - smooth(60 * DEG, 100 * DEG, Math.abs(toSign));
+      const w = near * signAhead;
+      signEngage = Math.max(signEngage, w);
+      yaw += w * THREE.MathUtils.clamp(0.5 * toSign, -SIGN_GLANCE_MAX, SIGN_GLANCE_MAX);
     }
 
     // Pitch and the cabin glance.
@@ -204,10 +221,12 @@ export function buildApproachKeyframes(aspect) {
     for (const g of glimpses) {
       const w = glimpseWindow(g.s, s, g.fall);
       if (w <= 0) continue;
-      pitch = lerp(pitch, g.peak, w);
+      pitch = lerp(pitch, g.peak, w); // the camera still tilts up for the cabin peek regardless of a sign
       // Turn (either way) so the cabin ends up offAxis to the right of the view axis: a glance, off centre.
+      // The yaw pull is faded out by how engaged a sign glance already is, so the two never fight over
+      // which way the camera points; the cabin keeps lifting the gaze (pitch, above) either way.
       const cabinYaw = bearing(base, TREEHOUSE_CENTER.x, TREEHOUSE_CENTER.z) - offAxis;
-      yaw += w * wrapPi(cabinYaw - yaw);
+      yaw += w * (1 - signEngage) * wrapPi(cabinYaw - yaw);
     }
 
     // Leave the hero gaze: yaw 0 and pitch 20 degrees at s = 0, easing to the walking gaze.
@@ -240,8 +259,9 @@ export function buildApproachKeyframes(aspect) {
 // ----- pace: speed along the walk ------------------------------------------------------------------------
 // Relative speed (1 = nominal) as a function of s. Time per distance is 1 / speed, so slow stretches
 // take more scroll. Movement starts at progress 0 at 0.6x (never a standing start, so the first 5
-// percent of scroll already walks about 0.4 m) and eases up to full pace over the first 8 percent
-// of the path. At each signpost the speed falls to SIGN_SPEED: the slow-down starts SIGN_LEAD_M
+// percent of scroll already walks about 0.8 m, measured numerically; 0.4 m is reached by about 2.9
+// percent) and eases up to full pace over the first 8 percent of the path. At each signpost the speed
+// falls to SIGN_SPEED: the slow-down starts SIGN_LEAD_M
 // before the sign, holds the minimum from 0.5 m before it to 0.1 m after, and is gone 0.9 m after.
 // A gentle ease at the end brings the speed down to END_SPEED as we arrive at the trunk.
 const START_SPEED = 0.6;
