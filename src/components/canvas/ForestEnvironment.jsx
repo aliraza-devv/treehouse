@@ -1203,6 +1203,10 @@ function Built({ builder }) {
 
 // Stages are mounted one per frame so the texture painting (the expensive part) is spread out.
 const STAGES = [buildGround, buildBackgroundTrees, buildGroundCover, buildStoneAndWood, buildFarTrees];
+// Index of buildGroundCover above: its objects (ferns, ivy, sedge, fallen leaves) sit off the Section 2
+// path corridor (see `blocked()`) and are wrapped in a named group so Section 2's HeroCull controller
+// can hide them once the walker has left the hero's static viewing pocket. See HeroCull.jsx.
+const GROUND_COVER_STAGE = STAGES.indexOf(buildGroundCover);
 
 export default function ForestEnvironment() {
   const [stage, setStage] = useState(0);
@@ -1214,7 +1218,17 @@ export default function ForestEnvironment() {
 
   return (
     <group name="forest-environment">
-      {STAGES.map((builder, i) => (stage > i ? <Built key={i} builder={builder} /> : null))}
+      {STAGES.map((builder, i) =>
+        stage > i ? (
+          i === GROUND_COVER_STAGE ? (
+            <group key={i} name="hero-ground-cover">
+              <Built builder={builder} />
+            </group>
+          ) : (
+            <Built key={i} builder={builder} />
+          )
+        ) : null,
+      )}
       {stage > STAGES.length ? <ForegroundLeaves /> : null}
     </group>
   );

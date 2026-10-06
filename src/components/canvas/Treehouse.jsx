@@ -1711,7 +1711,7 @@ export default function Treehouse() {
         {assets.halos.map((h) => (
           <primitive key={h.uuid} object={h} dispose={null} />
         ))}
-        <group ref={ladderRef} position={assets.ladder.anchor}>
+        <group ref={ladderRef} name="hero-rope-ladder" position={assets.ladder.anchor}>
           <mesh geometry={assets.ladder.rope} material={assets.ladder.ropeMat} castShadow receiveShadow />
           <mesh geometry={assets.ladder.wood} material={assets.ladder.woodMat} castShadow receiveShadow />
         </group>

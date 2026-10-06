@@ -117,6 +117,7 @@ export function* paintSmoothBark({ variant, seed, size }) {
   const Fl = new Float32Array(K * K); // lichen / dark patch mask
   const Fb = new Float32Array(K * K); // peeling band / streak tone
   for (let y = 0; y < K; y++) {
+    if (y > 0 && y % 48 === 0) yield; // the coarse fields are the slow part of the setup: spread them out
     const v = (y + 0.5) / K;
     for (let x = 0; x < K; x++) {
       const u = (x + 0.5) / K;
@@ -207,7 +208,7 @@ export function* paintSmoothBark({ variant, seed, size }) {
           b *= 1 - 0.12 * paper;
           h += 0.1 * paper;
           // dark fissured patches (old bark at branch collars and the base): ragged mask
-          const patch = smoothstep(0.1, 0.34, Lf[i] + (sp - 0.5) * 0.18);
+          const patch = smoothstep(0.1, 0.34, Lf[i] + Mf[i] * 0.1 + (sp - 0.5) * 0.02);
           const fis = noise.perlin2(u * 22 + Bf[i], v * 12, 22, 12);
           const ridge = smoothstep(-0.1, 0.35, fis);
           const pr = black[0] + (brown[0] - black[0]) * ridge * 0.6;
@@ -259,15 +260,16 @@ export function* paintSmoothBark({ variant, seed, size }) {
             const w = noise.perlin2(u * 8 + Mf[i] * 0.5, v * 70, 8, 70);
             const crease = 1 - Math.abs(w);
             const zone = smoothstep(-0.25, 0.45, Bf[i]);
-            line = smoothstep(0.84, 0.985, crease) * (0.35 + 0.65 * zone);
-            r *= 1 - 0.2 * line;
-            g *= 1 - 0.2 * line;
-            b *= 1 - 0.18 * line;
-            h += 0.12 * line * 1.0 + 0.04 * Bf[i];
+            line = smoothstep(0.86, 0.99, crease) * (0.2 + 0.6 * zone);
+            r *= 1 - 0.14 * line;
+            g *= 1 - 0.14 * line;
+            b *= 1 - 0.13 * line;
+            h += 0.1 * line + 0.04 * Bf[i];
           }
           // pale lichen crust: ragged-edged blotches on the smooth skin, with the odd dark fleck
           const lm = smoothstep(-0.05, 0.5, Lf[i]);
-          const crust = smoothstep(0.38, 0.62, lm + (sp - 0.5) * 0.9);
+          // ragged edge from mid frequency noise (white noise here would read as salt and pepper grain)
+          const crust = smoothstep(0.5, 0.72, lm + Mf[i] * 0.14 + (sp - 0.5) * 0.26);
           const lk = crust * (horn ? 0.5 : 0.72);
           r += (lichen[0] * (0.9 + 0.2 * sp2) - r) * lk;
           g += (lichen[1] * (0.9 + 0.2 * sp2) - g) * lk;
@@ -276,13 +278,19 @@ export function* paintSmoothBark({ variant, seed, size }) {
           r *= 1 - 0.5 * fleck;
           g *= 1 - 0.5 * fleck;
           b *= 1 - 0.5 * fleck;
+          // rain tracks: narrow dark runs down the bark, greener where the water lingers
+          const rainN = noise.perlin2(u * 22 + Tf[i] * 0.5, v * 2, 22, 2);
+          const rain = smoothstep(0.12, 0.55, rainN) * (1 - crust);
+          r *= 1 - 0.13 * rain;
+          g *= 1 - 0.1 * rain;
+          b *= 1 - 0.13 * rain;
           // faint green algae on the damp (low tone) areas
-          const alg = (1 - t) * 0.1 * (1 - crust);
+          const alg = ((1 - t) * 0.1 + 0.07 * rain) * (1 - crust);
           r += (algae[0] - r) * alg;
           g += (algae[1] - g) * alg;
           b += (algae[2] - b) * alg;
           h += crust * 0.035 - fleck * 0.05;
-          rg = 0.74 + 0.16 * crust - 0.05 * line + 0.05 * crack;
+          rg = 0.74 + 0.16 * crust - 0.05 * line + 0.05 * crack - 0.04 * rain;
           aoV = 1 - 0.3 * line - 0.4 * crack - 0.15 * fleck;
         }
         const o = i * 4;

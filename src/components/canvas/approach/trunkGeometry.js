@@ -14,7 +14,7 @@
 import * as THREE from "three";
 import { range } from "@/lib/random";
 import { clamp } from "@/lib/noise";
-import { DEG, TAU, shadeBark } from "./trunkMath";
+import { DEG, TAU, cameraDistance, shadeBark } from "./trunkMath";
 import { IVY_LOOK, TRUNK_TUNING } from "./trunkTones";
 
 const V3 = THREE.Vector3;
@@ -168,6 +168,28 @@ function frameOf(axis, e1Out, e2Out) {
 // ------------------------------------------------------------------------------------------------
 // BROKEN BRANCH STUBS
 // ------------------------------------------------------------------------------------------------
+// Direction of a stub's axis (the same formula addStub uses).
+function stubAxis(yaw, pitch, out = new V3()) {
+  return out.set(Math.cos(yaw) * Math.cos(pitch), Math.sin(pitch), Math.sin(yaw) * Math.cos(pitch));
+}
+
+// A stub must never reach into the walker's weave tube (the camera passes close to the close trunks, and
+// a snapped limb at head height pointing at the path would be in the lens). Each candidate is tested at
+// its tip and midpoint: neither may be closer to the camera than TRUNK_TUNING.stubClearance, nor closer
+// than the stub's own root already is (so a stub pointing sideways or away is always fine).
+function stubClear(model, st) {
+  const base = model.pointAt(st.h, st.theta, new V3());
+  const D = stubAxis(st.yaw, st.pitch);
+  const rootD = cameraDistance(base.x, base.y, base.z);
+  // the tip and the twigs that grow off the shaft reach a little beyond the points tested: a margin of 12 cm
+  const need = Math.min(Math.max(TRUNK_TUNING.stubClearance, rootD - 0.02) + 0.12, 1.0);
+  for (const k of [0.5, 1.0, 1.25]) {
+    const p = base.clone().addScaledVector(D, st.L * k);
+    if (cameraDistance(p.x, p.y, p.z) < need) return false;
+  }
+  return true;
+}
+
 export function planStubs(model, count, rng) {
   const close = model.spec.cls === "close";
   const out = [];
@@ -176,27 +198,62 @@ export function planStubs(model, count, rng) {
   while (out.length < count && tries++ < 60) {
     const h = range(rng, 0.65, 3.0);
     if (hs.some((x) => Math.abs(x - h) < 0.5)) continue;
+    // a few candidates per stub: the first that clears the walker wins (mostly on the side the walker sees)
+    let st = null;
+    for (let a = 0; a < 10 && !st; a++) {
+      const spread = (close ? 1.3 : 2.1) + 0.12 * a; // widens when the path side is too tight
+      const theta = model.spec.pathTheta + range(rng, -spread, spread);
+      const rb = range(rng, 0.032, 0.078) * (0.75 + 0.5 * model.r);
+      const cand = {
+        h,
+        theta,
+        pitch: range(rng, -14, 38) * DEG,
+        yaw: theta + range(rng, -0.28, 0.28) + (a >= 3 ? (rng() < 0.5 ? -1 : 1) * range(rng, 0.4, 1.1) : 0),
+        L: (close ? range(rng, 0.5, 1.1) : range(rng, 0.32, 0.92)) * (a >= 5 ? 0.7 : 1),
+        rb,
+        flaps: close ? 2 : rb > 0.05 ? 1 : 0,
+        twigs: 2 + Math.floor(rng() * 2),
+        lichen: rng() < 0.36,
+        ivyStrand: false,
+        high: close,
+      };
+      if (stubClear(model, cand)) st = cand;
+    }
+    if (!st) continue; // nowhere to put this one without poking the walker: leave the trunk with one fewer
     hs.push(h);
-    // mostly on the side the walker sees
-    const spread = close ? 1.3 : 2.1;
-    const theta = model.spec.pathTheta + range(rng, -spread, spread);
-    const L = close ? range(rng, 0.5, 1.1) : range(rng, 0.32, 0.92);
-    const rb = range(rng, 0.032, 0.078) * (0.75 + 0.5 * model.r);
-    out.push({
-      h,
-      theta,
-      pitch: range(rng, -14, 38) * DEG,
-      yaw: theta + range(rng, -0.28, 0.28),
-      L,
-      rb,
-      flaps: close ? 2 : rb > 0.05 ? 1 : 0,
-      twigs: 2 + Math.floor(rng() * 2),
-      lichen: rng() < 0.36,
-      ivyStrand: false,
-      high: close,
-    });
+    out.push(st);
   }
   return out;
+}
+
+// Make every triangle of acc from firstTriangle on agree with its vertex normals. The splintered ends are
+// built from ragged rings whose winding can flip where a long splinter sits beside a short one; flipping
+// the odd triangle (rather than drawing both sides) keeps the bark flaps, whose back faces carry their own
+// opposite normals, from z fighting.
+export function orientToNormals(acc, firstTriangle = 0) {
+  const A = new V3();
+  const B = new V3();
+  const C = new V3();
+  const n = new V3();
+  const vn = new V3();
+  for (let t = firstTriangle; t < acc.idx.length / 3; t++) {
+    const a = acc.idx[t * 3];
+    const b = acc.idx[t * 3 + 1];
+    const c = acc.idx[t * 3 + 2];
+    A.fromArray(acc.pos, a * 3);
+    B.fromArray(acc.pos, b * 3);
+    C.fromArray(acc.pos, c * 3);
+    n.crossVectors(B.sub(A), C.sub(A));
+    vn.set(
+      acc.nor[a * 3] + acc.nor[b * 3] + acc.nor[c * 3],
+      acc.nor[a * 3 + 1] + acc.nor[b * 3 + 1] + acc.nor[c * 3 + 1],
+      acc.nor[a * 3 + 2] + acc.nor[b * 3 + 2] + acc.nor[c * 3 + 2],
+    );
+    if (n.dot(vn) < 0) {
+      acc.idx[t * 3 + 1] = c;
+      acc.idx[t * 3 + 2] = b;
+    }
+  }
 }
 
 const wearScratch = [0, 0, 0, 0];
@@ -206,7 +263,7 @@ const tintScratch = [1, 1, 1];
 export function addStub(acc, model, st, rng) {
   const N = st.high ? 7 : 6;
   const surf = model.surface(st.h, st.theta);
-  const D = new V3(Math.cos(st.yaw) * Math.cos(st.pitch), Math.sin(st.pitch), Math.sin(st.yaw) * Math.cos(st.pitch));
+  const D = stubAxis(st.yaw, st.pitch);
   const base = surf.p.clone().addScaledVector(surf.n, -0.07); // buried: the stub grows out of the bark
   const E1 = new V3();
   const E2 = new V3();
@@ -449,10 +506,33 @@ export function addBranchTube(acc, model, pts, radii, radial, rng, { uRepeat = 1
 // Cards are 1 x 1 planes with their pivot at the bottom edge centre (see trunkBuild), scaled to width x
 // 1.25 width, stood 1 cm off the bark with the leaf tips lifting away. runners: arrays of ribbon points.
 // umbels: { p: Vector3, s: size, c: [r, g, b] } (the flowering heads at the top of a mature patch).
+//
+// The ivy is grown VINE by VINE, the way it really climbs: each patch is a few sinuous woody stems that
+// climb the bark in a lazy spiral (thick and brown at the foot, thin at the tip), with a short side shoot
+// here and there, and the leaf sprigs sit ON the vines (denser low down, thinning toward the top, with
+// bare bark between the clumps). So the leaves read as attached to stems, not as stickers.
 const _m = new THREE.Matrix4();
 const _X = new V3();
 const _Y = new V3();
 const _Z = new V3();
+const _p = new V3();
+const CARD_CLEAR = 0.42;
+
+// One vine: points (h, theta) climbing from (h0, th0) to about h1, wandering sideways. Returns [{ h, th }].
+function vinePath(rng, h0, th0, h1, wander, segs) {
+  const pts = [];
+  const ph = rng() * TAU;
+  const drift = range(rng, -0.05, 0.05); // overall lean round the trunk per segment (radians)
+  let th = th0;
+  for (let k = 0; k <= segs; k++) {
+    const h = h0 + ((h1 - h0) * k) / segs;
+    pts.push({ h, th });
+    // a lazy S plus jitter: ivy never climbs a ruler line
+    th += drift + wander * Math.sin(k * 1.25 + ph) + range(rng, -0.05, 0.05);
+  }
+  return pts;
+}
+
 export function planIvy(model, cls, rng, { flowering = false } = {}) {
   const spec = model.spec;
   const close = cls === "close";
@@ -462,26 +542,65 @@ export function planIvy(model, cls, rng, { flowering = false } = {}) {
   const umbels = [];
   const W = TRUNK_TUNING.ivyCardWidth;
   const nPer = close ? TRUNK_TUNING.ivyCardsClose : TRUNK_TUNING.ivyCardsMid;
+  const SEGS = 7; // ribbon segments per vine (each is 2 triangles: the runners cost as much as the leaves)
   for (let pi = 0; pi < patches; pi++) {
     const theta0 = spec.pathTheta + range(rng, -1.1, 1.1);
-    const omega = range(rng, 0.4, 0.85);
+    const omega = range(rng, 0.4, 0.85); // angular half width of the patch
     const h0 = range(rng, 0.15, 1.2);
-    const height = flowering && pi === 0 ? range(rng, 5.4, 6.4) : close ? range(rng, 2.2, 4.4) : range(rng, 2.4, 5.0);
-    const count = Math.round(nPer * range(rng, 0.8, 1.25) * (flowering && pi === 0 ? 1.15 : 1));
+    const tall = flowering && pi === 0;
+    const height = tall ? range(rng, 5.4, 6.4) : close ? range(rng, 2.2, 4.4) : range(rng, 2.4, 5.0);
+    const nVines = (close ? 3 : 2) + (rng() < 0.5 ? 1 : 0) + (tall ? 1 : 0);
+    const count = Math.round(nPer * range(rng, 0.8, 1.25) * (tall ? 1.15 : 1));
     const seed = rng() * 50;
+    const vines = [];
+    const tips = [];
+    for (let v = 0; v < nVines; v++) {
+      const hs = h0 + range(rng, -0.25, 0.2);
+      const hEnd = h0 + height * range(rng, 0.62, 1.0);
+      const vine = vinePath(rng, hs, theta0 + range(rng, -omega, omega) * 0.8, hEnd, range(rng, 0.05, 0.1), SEGS);
+      const w0 = range(rng, 0.05, 0.078) * (close ? 1.1 : 1);
+      vines.push({ pts: vine, w0 });
+      tips.push(vine[SEGS]);
+      // a short side shoot off the lower part of the vine, going out and up
+      if (rng() < 0.7) {
+        const k = 2 + Math.floor(rng() * 3);
+        const root = vine[k];
+        const dir = rng() < 0.5 ? -1 : 1;
+        const shoot = vinePath(rng, root.h, root.th, root.h + range(rng, 0.7, 1.5), 0.04, 3).map((q, i) => ({ h: q.h, th: q.th + dir * 0.13 * i }));
+        vines.push({ pts: shoot, w0: w0 * 0.55 });
+      }
+    }
+    // runner ribbons: the vines themselves, hugging the bark 8 mm off it
+    for (const vine of vines) {
+      const n = vine.pts.length;
+      runners.push(
+        vine.pts.map((q, k) => {
+          const surf = model.surface(q.h, q.th);
+          const t = k / Math.max(1, n - 1);
+          return { p: surf.p.clone().addScaledVector(surf.n, 0.008), n: surf.n, up: surf.up, w: vine.w0 * (1 - 0.62 * t) };
+        }),
+      );
+    }
+    // leaf sprigs on the vines: pick a point along a random vine (lower points more likely), a little off the stem
     let placed = 0;
     let tries = 0;
-    while (placed < count && tries++ < count * 8) {
+    while (placed < count && tries++ < count * 10) {
+      const vine = vines[Math.floor(rng() * vines.length)];
+      const n = vine.pts.length;
       const u = Math.pow(rng(), 1.45); // denser low down, thinning toward the top
-      const h = h0 + u * height;
-      const th = theta0 + (rng() * 2 - 1) * omega * (1 - 0.35 * u);
-      // clumps with bare bark between: a noise gate that gets stricter with height
+      const f = u * (n - 1);
+      const k = Math.min(n - 2, Math.floor(f));
+      const a = vine.pts[k];
+      const b = vine.pts[k + 1];
+      const h = a.h + (b.h - a.h) * (f - k) + range(rng, -0.08, 0.08);
+      const th = a.th + (b.th - a.th) * (f - k) + range(rng, -0.1, 0.1);
+      // clumps with bare vine between: a noise gate that gets stricter with height
       const clump = model.noise.simplex3(th * 2.6 + seed, h * 0.85, seed * 0.3);
-      if (clump < -0.3 + 0.6 * u + 0.1 * rng()) continue;
+      if (clump < -0.55 + 0.7 * u + 0.1 * rng()) continue;
       const surf = model.surface(h, th);
       // the leaf direction: mostly up the bark, sometimes sideways or even hanging
       const side = _X.crossVectors(surf.up, surf.n).normalize(); // tangent round the trunk
-      const psi = rng() < 0.12 ? range(rng, -2.4, 2.4) : range(rng, -0.85, 0.85);
+      const psi = rng() < 0.14 ? range(rng, -2.4, 2.4) : range(rng, -0.85, 0.85);
       const inPlane = surf.up.clone().multiplyScalar(Math.cos(psi)).addScaledVector(side, Math.sin(psi)).normalize();
       const tilt = range(rng, 0.14, 0.5); // the tip lifts off the bark
       _Y.copy(inPlane).multiplyScalar(Math.cos(tilt)).addScaledVector(surf.n, Math.sin(tilt)).normalize();
@@ -490,35 +609,24 @@ export function planIvy(model, cls, rng, { flowering = false } = {}) {
       const w = range(rng, W[0], W[1]) * (1 - 0.15 * u);
       _m.makeBasis(_X.clone().multiplyScalar(w), _Y.clone().multiplyScalar(w * 1.25), _Z);
       const origin = surf.p.clone().addScaledVector(surf.n, 0.012).addScaledVector(inPlane, -0.03);
+      // a leaf a hand's breadth from the lens is a dark smear across the frame: ivy keeps 0.42 m clear of the
+      // walker's weave tube (the tip of the card is tested as well as its root)
+      if (cameraDistance(origin.x, origin.y, origin.z) < CARD_CLEAR) continue;
+      _p.copy(origin).addScaledVector(_Y, w * 1.25);
+      if (cameraDistance(_p.x, _p.y, _p.z) < CARD_CLEAR) continue;
       _m.setPosition(origin);
       const fresh = rng() < IVY_LOOK.freshChance * (0.6 + 0.8 * u) ? 1 : 0;
       const val = range(rng, 0.82, 1.1);
-      const c = [0, 1, 2].map((k) => (IVY_LOOK.dark[k] + (IVY_LOOK.fresh[k] - IVY_LOOK.dark[k]) * fresh * range(rng, 0.6, 1)) * val);
+      const c = [0, 1, 2].map((q) => (IVY_LOOK.dark[q] + (IVY_LOOK.fresh[q] - IVY_LOOK.dark[q]) * fresh * range(rng, 0.6, 1)) * val);
       cards.push({ m: _m.toArray(), c, h });
       placed++;
     }
-    // runner stems: ivy hugs the bark on thin brown ropes, climbing a little spirally
-    const nRun = close ? 2 : 1 + (rng() < 0.4 ? 1 : 0);
-    for (let r = 0; r < nRun; r++) {
-      const pts = [];
-      let th = theta0 + range(rng, -omega, omega) * 0.6;
-      const segs = 5;
-      const hTop = h0 + height * range(rng, 0.7, 0.95);
-      for (let k = 0; k <= segs; k++) {
-        const h = h0 - 0.2 + ((hTop - h0 + 0.2) * k) / segs;
-        th += range(rng, -0.12, 0.2);
-        const surf = model.surface(h, th);
-        pts.push({ p: surf.p.clone().addScaledVector(surf.n, 0.008), n: surf.n, up: surf.up, w: 0.045 * (1 - 0.6 * (k / segs)) * range(rng, 0.8, 1.2) });
-      }
-      runners.push(pts);
-    }
     // flowering heads: umbels at the very top of the first patch of a mature, flowering ivy
-    if (flowering && pi === 0) {
-      const top = h0 + height;
-      const n = 11;
-      for (let k = 0; k < n; k++) {
-        const h = top - range(rng, -0.4, 1.4);
-        const th = theta0 + range(rng, -omega, omega) * 1.2;
+    if (tall) {
+      for (let k = 0; k < 11; k++) {
+        const tip = tips[Math.floor(rng() * tips.length)];
+        const h = tip.h - range(rng, -0.4, 1.2);
+        const th = tip.th + range(rng, -0.35, 0.35);
         const surf = model.surface(h, th);
         umbels.push({
           p: surf.p.clone().addScaledVector(surf.n, range(rng, 0.05, 0.12)),
@@ -559,7 +667,7 @@ export function addRunner(acc, pts, tintArr) {
 // ------------------------------------------------------------------------------------------------
 // Instances scale x and z by the real radius (and y a little). There is no yaw, so the moss on the +Z
 // face is on the north side of every far trunk, exactly as on the near ones.
-export function buildFarTrunkGeometry(model, rings, radial) {
+export function buildFarTrunkGeometry(model, rings, radial, bend = { ax: 0, az: 0, phase: 0 }) {
   const acc = createAcc();
   const nR = rings.length;
   const stride = radial + 1;
@@ -578,7 +686,12 @@ export function buildFarTrunkGeometry(model, rings, radial) {
     for (let j = 0; j <= radial; j++) {
       const th = (j / radial) * TAU;
       const r = radiusAt(h, th);
-      p.set(Math.cos(th) * r, h, Math.sin(th) * r);
+      // the axis wanders in a slow S (zero at the ground), a different one per species so the tree line is not
+      // a row of identical poles; amplitudes are in unit radii (the instance scales x and z by the real radius)
+      const hh = Math.max(h, 0);
+      const cx = bend.ax * (Math.sin(hh * 0.21 + bend.phase) - Math.sin(bend.phase));
+      const cz = bend.az * (Math.sin(hh * 0.17 + bend.phase * 1.7) - Math.sin(bend.phase * 1.7));
+      p.set(Math.cos(th) * r + cx, h, Math.sin(th) * r + cz);
       // slope of the profile (finite difference) tilts the normal
       const dr = (radiusAt(h + 0.3, th) - radiusAt(h - 0.3, th)) / 0.6;
       n.set(Math.cos(th), -dr, Math.sin(th)).normalize();

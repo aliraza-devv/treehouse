@@ -95,11 +95,13 @@ function distToSegment(p, a, b) {
 }
 
 // True when something of radius `pad` at (x, y, z) would hide the treehouse or sit inside it.
-export function blocksCabin(x, y, z, pad = 0) {
+// `scale` shrinks the clear radius round each sight line (crowns use 1; the overhang sprays, which hang
+// close to the camera and are deliberately blurred, use less so they can exist near a glimpse).
+export function blocksCabin(x, y, z, pad = 0, scale = 1) {
   _v.set(x, y, z);
   if (CABIN_BOX.distanceToPoint(_v) < 1.2 + pad) return true;
   for (const s of SIGHT) {
-    if (distToSegment(_v, s.a, TREEHOUSE_CENTER) < s.clear + pad) return true;
+    if (distToSegment(_v, s.a, TREEHOUSE_CENTER) < s.clear * scale + pad) return true;
   }
   return false;
 }
@@ -175,7 +177,7 @@ export function buildTrunkList() {
       ivy: t.ivy || extra.includes(i),
       ivyExtra: !t.ivy && extra.includes(i),
       // moss and lichen vary a lot from trunk to trunk: some are green sleeves, some are almost bare
-      mossK: range(rng, 0.55, 1.35),
+      mossK: range(rng, 0.3, 1.3),
       lichenK: range(rng, 0.5, 1.4),
     });
   });
@@ -246,13 +248,17 @@ export function createTrunkModel(spec, radial = 12) {
   const lobeCount = Math.max(2, Math.min(sp.lobes.count, Math.floor(radial / 2.6)));
   const off = rng() * 10;
 
+  // Roots on the side that faces the dirt are trodden away by twenty years of boots: the flare and the
+  // buttress lobes are held back there, so no trunk foot sits on the worn path or in the weave of the
+  // walker. relief is the fraction of the flare removed at the very centre of that side.
+  const relief = spec.pathTheta === undefined ? 0 : spec.cls === "close" ? TRUNK_TUNING.pathSideRelief.close : TRUNK_TUNING.pathSideRelief.mid;
   const radius = (h, theta) => {
     const hh = Math.max(h, 0);
     const cx = Math.cos(theta);
     const sn = Math.sin(theta);
-    // radius at breast height is r; it tapers by sp.taper over 22 m; closes in over the top 3 m
+    // radius at breast height is r; it tapers by sp.taper over 22 m; closes in over the top 4 m (the leading shoot thins into the crown)
     let r = spec.r * (1.04 - sp.taper * Math.min(hh / 22, 1.2));
-    r *= 1 - 0.35 * smoothstep(hTop - 3, hTop, h);
+    r *= 1 - 0.7 * smoothstep(hTop - 4, hTop, h);
     // organic lumpiness: circle embedded noise (seamless round the trunk), one big and one small octave
     let k =
       1 +
@@ -266,6 +272,10 @@ export function createTrunkModel(spec, radial = 12) {
       const b = buttresses[i];
       const d = angDiff(theta, b.az) / b.w;
       fl += b.a * e * Math.exp(-d * d);
+    }
+    if (relief > 0) {
+      const d = angDiff(theta, spec.pathTheta) / 0.95; // gaussian over about +-55 degrees
+      fl *= 1 - relief * Math.exp(-d * d);
     }
     return r * (k + fl);
   };

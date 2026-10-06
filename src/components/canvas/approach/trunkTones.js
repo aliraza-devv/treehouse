@@ -26,29 +26,37 @@ export const TRUNK_TUNING = {
 
   // Ring and radial counts per class (triangles scale with radial x rings). `detail` multiplies radial.
   detail: 1,
-  closeRadial: 20,
+  closeRadial: 18,
   midNearRadial: 12,
   midFarRadial: 8,
   // Heights (m above the trunk's ground) of the rings. Dense low where the flare changes quickly,
   // coarse high up where only the silhouette matters. The first ring is below ground (no gap at the foot).
   closeRings: [-0.25, 0, 0.22, 0.5, 0.9, 1.45, 2.2, 3.3, 5, 7.5, 11, 15, 18],
-  midNearRings: [-0.25, 0, 0.35, 1.2, 3, 6, 10, 14.5],
+  midNearRings: [-0.25, 0, 0.35, 1.2, 3, 6.5, 14.5],
   midFarRings: [-0.25, 0, 0.6, 2.5, 6, 10.5, 15],
   // trunks with |lateral| at most this are "near" mid trunks (more rings, more radial)
   midNearLateral: 5.5,
 
+  // Fraction of the root flare removed on the side of a trunk that faces the dirt (see createTrunkModel).
+  pathSideRelief: { close: 0.9, mid: 0.6 },
+  // Broken stubs never come closer to the walker's weave tube than this (m), and never closer than their root.
+  stubClearance: 0.45,
+
   // Far (instanced, slim, fogged) trunks, 13 to 25 m ahead and beside the path.
-  farCount: 12,
-  farRadial: 7,
+  farCount: 18,
+  farRadial: 6,
   farRings: [-0.3, 0, 0.8, 5, 15], // one geometry for every instance, scaled in x/z only
 
   // Crown dressing: leaf cluster counts and size (metres across a cluster of two crossed cards).
-  crownMinLateral: 6, // mid trunks at least this far from the centreline get a crown
-  crownClusters: [7, 10], // clusters per crowned mid trunk (min, max)
-  crownCloseClusters: 3, // per close trunk, high up, only to hide the cut top
-  farCrownClusters: 6,
-  crownSize: [1.8, 2.5],
+  crownMinLateral: 6, // mid trunks at least this far from the centreline get the full crown
+  crownClusters: [15, 20], // clusters per full crown (min, max)
+  crownNearClusters: [11, 14], // nearer mid trunks get a thinner crown (so no cut top shows when the walker looks up)
+  crownCloseClusters: 5, // per close trunk, high up, only to hide the cut top
+  crownCloseMinHeight: 14,
+  farCrownClusters: 9,
+  crownSize: [2.0, 2.8],
   crownMinHeight: 8.5,
+  farCrownSize: [2.4, 3.2], // far trunks have no limbs, so their clusters are bigger and hug the top
 
   // Overhang sprays at set path fractions. Heights are above the local ground.
   sprayClearance: 0.7, // metres from the walker's weave tube to the nearest leaf or branch
@@ -62,8 +70,8 @@ export const TRUNK_TUNING = {
   ivyCardsMid: 15, // per patch on a mid trunk
 
   // Sunlit and shaded flank tints (vertex colour multipliers).
-  sunTint: [1.05, 1.02, 0.95],
-  shadeTint: [0.9, 0.96, 0.97],
+  sunTint: [1.14, 1.09, 1.0],
+  shadeTint: [0.97, 1.03, 1.04],
 };
 
 // Foliage look. Multipliers on the leaf card albedo, same idea as the hero canopy (Tree.jsx).
@@ -89,14 +97,14 @@ export const IVY_LOOK = {
 
 // Colours for the shader wear (moss, lichen, fresh wood), linear THREE.Colors.
 export const WEAR_COLOURS = {
-  mossDark: mixc(PALETTE.mossTone, PALETTE.floorDark, 0.55),
-  mossLight: mixc(PALETTE.mossTone, PALETTE.leafHighlight, 0.28),
+  mossDark: mixc(PALETTE.mossTone, PALETTE.floorDark, 0.32),
+  mossLight: mixc(mixc(PALETTE.mossTone, PALETTE.leafHighlight, 0.42), PALETTE.warmLight, 0.1),
   lichen: mixc(PALETTE.stone, PALETTE.leafHighlight, 0.32).multiplyScalar(0.62),
   // freshly broken wood: warm timber lifted toward cream, then dimmed (it sits in shade and mist)
   wood: mixc(PALETTE.wood, BRAND.cream, 0.42).multiplyScalar(0.78),
 };
 export const UMBEL_COLOUR = mixc(PALETTE.leafHighlight, PALETTE.warmLight, 0.22);
-export const IVY_STEM_COLOUR = mixc(PALETTE.barkDark, PALETTE.floorDark, 0.4);
+export const IVY_STEM_COLOUR = mixc(PALETTE.bark, PALETTE.floorDark, 0.3);
 export const TWIG_COLOUR = mixc(PALETTE.barkDark, PALETTE.stone, 0.14);
 export const LICHEN_STRAND = {
   light: scale(rgb255(mixc(PALETTE.stone, PALETTE.leafHighlight, 0.35)), 0.82),
@@ -124,10 +132,10 @@ export const SPECIES = {
     lobes: { count: 3, amp: 0.04, twist: 0 },
     knob: 0.05,
     flare: 0.5,
-    buttress: 0.55,
+    buttress: 0.4, // flare + buttress stay under about 0.95 so the foot is at most about 2 r wide (flora keeps 1.9 r + 0.2 clear)
     taper: 0.26,
     curve: 0.22,
-    moss: 1.0,
+    moss: 0.95,
     lichen: 0.5,
     leaf: "oak",
     tint: [1, 1, 1],
@@ -148,11 +156,11 @@ export const SPECIES = {
     lobes: { count: 4, amp: 0.035, twist: 0.05 },
     knob: 0.055,
     flare: 0.45,
-    buttress: 0.5,
+    buttress: 0.36,
     taper: 0.3,
     curve: 0.26,
     moss: 0.8,
-    lichen: 0.9,
+    lichen: 0.65,
     leaf: "oak",
     tint: [0.97, 0.98, 1.0],
   },
@@ -164,11 +172,11 @@ export const SPECIES = {
     lobes: { count: 2, amp: 0.02, twist: 0 },
     knob: 0.03,
     flare: 0.38,
-    buttress: 0.4,
+    buttress: 0.34,
     taper: 0.2,
     curve: 0.12,
     moss: 0.8,
-    lichen: 1.1,
+    lichen: 0.5,
     leaf: "beech",
     tint: [1, 1, 1],
   },
@@ -184,7 +192,7 @@ export const SPECIES = {
     taper: 0.25,
     curve: 0.18,
     moss: 0.9,
-    lichen: 0.8,
+    lichen: 0.4,
     leaf: "beech",
     tint: [1, 1, 1],
   },

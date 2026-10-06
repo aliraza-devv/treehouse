@@ -34,21 +34,33 @@ uniform vec3 uLichen;
 uniform vec3 uWood;
 varying vec4 vWear;
 varying vec3 vBarkPos;
-float barkHash( vec3 p ) {
-  p = fract( p * 0.1031 );
-  p += dot( p, p.zyx + 31.32 );
-  return fract( ( p.x + p.y ) * p.z );
+// Gradient (Perlin) noise rather than value noise: value noise flattens at its lattice points and shows
+// them as straight, axis aligned edges on a vertical trunk. barkNoise returns about 0.5 +- 0.2.
+vec3 barkGrad( vec3 p ) {
+  p = vec3( dot( p, vec3( 127.1, 311.7, 74.7 ) ), dot( p, vec3( 269.5, 183.3, 246.1 ) ), dot( p, vec3( 113.5, 271.9, 124.6 ) ) );
+  return -1.0 + 2.0 * fract( sin( p ) * 43758.5453123 );
 }
 float barkNoise( vec3 x ) {
   vec3 i = floor( x );
   vec3 f = fract( x );
-  f = f * f * ( 3.0 - 2.0 * f );
-  return mix(
-    mix( mix( barkHash( i ), barkHash( i + vec3( 1.0, 0.0, 0.0 ) ), f.x ),
-         mix( barkHash( i + vec3( 0.0, 1.0, 0.0 ) ), barkHash( i + vec3( 1.0, 1.0, 0.0 ) ), f.x ), f.y ),
-    mix( mix( barkHash( i + vec3( 0.0, 0.0, 1.0 ) ), barkHash( i + vec3( 1.0, 0.0, 1.0 ) ), f.x ),
-         mix( barkHash( i + vec3( 0.0, 1.0, 1.0 ) ), barkHash( i + vec3( 1.0, 1.0, 1.0 ) ), f.x ), f.y ),
-    f.z );
+  vec3 u = f * f * f * ( f * ( f * 6.0 - 15.0 ) + 10.0 );
+  float n = mix(
+    mix( mix( dot( barkGrad( i ), f ), dot( barkGrad( i + vec3( 1.0, 0.0, 0.0 ) ), f - vec3( 1.0, 0.0, 0.0 ) ), u.x ),
+         mix( dot( barkGrad( i + vec3( 0.0, 1.0, 0.0 ) ), f - vec3( 0.0, 1.0, 0.0 ) ), dot( barkGrad( i + vec3( 1.0, 1.0, 0.0 ) ), f - vec3( 1.0, 1.0, 0.0 ) ), u.x ), u.y ),
+    mix( mix( dot( barkGrad( i + vec3( 0.0, 0.0, 1.0 ) ), f - vec3( 0.0, 0.0, 1.0 ) ), dot( barkGrad( i + vec3( 1.0, 0.0, 1.0 ) ), f - vec3( 1.0, 0.0, 1.0 ) ), u.x ),
+         mix( dot( barkGrad( i + vec3( 0.0, 1.0, 1.0 ) ), f - vec3( 0.0, 1.0, 1.0 ) ), dot( barkGrad( i + vec3( 1.0, 1.0, 1.0 ) ), f - vec3( 1.0, 1.0, 1.0 ) ), u.x ), u.y ),
+    u.z );
+  return 0.5 + 0.7 * n;
+}
+// Three octaves, mean 0.5 and spread about 0.12. Each octave swaps the axes and uses a non integer scale,
+// so the lattices never line up.
+float barkFbm( vec3 p ) {
+  float n = barkNoise( p ) * 0.55;
+  p = p.yzx * 2.03 + 17.1;
+  n += barkNoise( p ) * 0.30;
+  p = p.zxy * 2.11 + 5.7;
+  n += barkNoise( p ) * 0.15;
+  return n;
 }
 `;
 
@@ -64,18 +76,22 @@ float barkWood = 0.0;
     cav = texture2D( roughnessMap, vRoughnessMapUv ).r;
   #endif
   float crev = 1.0 - cav;
-  // lichen: pale crust on the ridge tops
-  float ln = barkNoise( wp * 4.3 + 11.0 ) * 0.6 + barkNoise( wp * 15.0 + 3.0 ) * 0.4;
-  float lth = 1.0 - vWear.y * 0.8;
-  float lichen = smoothstep( lth, lth + 0.07, ln ) * smoothstep( 0.35, 0.8, cav );
-  diffuseColor.rgb = mix( diffuseColor.rgb, uLichen * ( 0.78 + 0.44 * barkNoise( wp * 40.0 ) ), lichen * 0.62 );
-  // moss: crevices first, then everything where the wear is high
-  float mn = barkNoise( wp * 3.0 + 7.0 ) * 0.5 + barkNoise( wp * 9.5 ) * 0.3 + barkNoise( wp * 27.0 + 5.0 ) * 0.2;
-  float mth = 1.0 - vWear.x * 1.25 - crev * 0.28;
-  barkMoss = smoothstep( mth, mth + 0.12, mn );
-  vec3 mossCol = mix( uMossDark, uMossLight, barkNoise( wp * 33.0 + 1.0 ) );
+  // lichen: a pale crust on the ridge tops, in patches
+  float ln = barkFbm( wp * 5.0 + 11.0 );
+  float lth = 1.0 - vWear.y * 0.55;
+  float lichen = smoothstep( lth, lth + 0.06, ln ) * smoothstep( 0.35, 0.8, cav );
+  diffuseColor.rgb = mix( diffuseColor.rgb, uLichen * ( 0.8 + 0.4 * barkNoise( wp * 34.0 ) ), lichen * 0.6 );
+  // moss: cushions that grow where the wear is high (the north face, the foot), reaching into crevices
+  // first. The threshold maps wear 0.8 to about 60 percent cover, 0.4 to 25 percent, 0.1 to a few
+  // flecks, so a mossy north face still shows bark between the cushions.
+  float mn = barkFbm( wp * 3.3 + 7.0 );
+  float mth = 0.8 - vWear.x * 0.36 - crev * 0.2;
+  barkMoss = smoothstep( mth, mth + 0.1, mn );
+  // moss colour: dark in the shade of the cushion, yellow-green where it catches the light, speckled
+  float mc = smoothstep( 0.3, 0.7, barkFbm( wp * 13.0 + 1.0 ) );
+  vec3 mossCol = mix( uMossDark, uMossLight, mc );
   barkWood = smoothstep( 0.3, 0.7, vWear.z );
-  diffuseColor.rgb = mix( diffuseColor.rgb, mossCol * ( 0.65 + 0.5 * cav ), barkMoss * 0.88 * ( 1.0 - barkWood ) );
+  diffuseColor.rgb = mix( diffuseColor.rgb, mossCol * ( 0.7 + 0.45 * cav ), barkMoss * 0.85 * ( 1.0 - barkWood ) );
   // freshly broken wood: pale, with fibres running along the branch (uv.x goes round it)
   float fibre = 0.72 + 0.28 * sin( vMapUv.x * 120.0 + barkNoise( wp * 18.0 ) * 5.0 );
   float fibre2 = barkNoise( vec3( vMapUv.x * 90.0, vMapUv.y * 3.0, 1.3 ) );
@@ -186,7 +202,6 @@ export function makeLichenMaterial(tex) {
     new THREE.MeshStandardMaterial({
       map: tex,
       alphaTest: 0.4,
-      alphaToCoverage: true,
       side: THREE.DoubleSide,
       roughness: 0.95,
       metalness: 0,
