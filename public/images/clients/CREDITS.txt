@@ -1,0 +1,16 @@
+Portraits in the round window beside the testimonials (shown large): free stock photos from Pexels (https://www.pexels.com), used under the Pexels licence (free for
+commercial use, no attribution required). They are NOT the clients quoted, which is why the page labels each one "Illustrative photo".
+Replace a file (same name, square, 960px webp) with the client's own photograph, with their permission, and delete
+"illustrative: true" from that testimonial in src/lib/site.js.
+file             Pexels photo id
+kids             3776447
+bespoke          36712860
+grandparents     5784947
+school           13600760
+bridge           8350316
+home             10582832
+castle           30372298
+environment      33646629
+idea             29464260
+detail           12871449
+Photo page: https://www.pexels.com/photo/<id>/

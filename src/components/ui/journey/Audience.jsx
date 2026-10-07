@@ -270,6 +270,7 @@ export default function Audience() {
                     <Photo
                       name={audience.photo}
                       eager
+                      fetchPriority="low"
                       sizes="(min-width: 768px) 30vw, 100vw"
                       className={`h-full w-full object-cover ${audience.mono ? "photo-grade-mono" : ""}`}
                     />

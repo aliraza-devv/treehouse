@@ -1,3 +1,4 @@
+import { preload } from "react-dom";
 import { Caveat, Figtree, Fraunces } from "next/font/google";
 import { LAYERS } from "@/lib/layers";
 import { BRAND } from "@/lib/sceneConfig";
@@ -52,7 +53,14 @@ export const viewport = {
 // Without JavaScript the GSAP reveal never runs, so show the hero text as is.
 const NOSCRIPT_CSS = "[data-intro]{opacity:1!important;visibility:visible!important;transform:none!important} [data-loader]{display:none}";
 
+// The hero's child model is a 3.7 MB file and the 3D hero cannot draw without it, so the loader waits on it. Asking for it here puts
+// the download in the page's first response, in parallel with the scripts, instead of starting it only once the scene code has
+// arrived and run (ChildOnLawn.jsx still calls useGLTF.preload, which then finds it already on its way). Same URL, same credentials
+// mode as three's loader, so the browser matches the two. (It must be called while a request renders, so it lives in the component.)
+const CHILD_MODEL = "/models/child/child.glb";
+
 export default function RootLayout({ children }) {
+  preload(CHILD_MODEL, { as: "fetch", crossOrigin: "anonymous" });
   return (
     <html lang="en-GB" className={`${display.variable} ${sans.variable} ${hand.variable} antialiased`}>
       <head>

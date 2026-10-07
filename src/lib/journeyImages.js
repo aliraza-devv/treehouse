@@ -18,7 +18,7 @@ const list = [
   { name: "audience-family", w: 1600, h: 1067, pos: "50% 50%", alt: "A cottage-style wooden treehouse built around a large trunk, with a railed deck." },
   { name: "audience-estate", w: 1600, h: 1067, pos: "50% 45%", alt: "A timber footbridge between tall trees, hung with warm lights." },
   { name: "audience-resort", w: 1600, h: 1067, pos: "50% 50%", alt: "Contemporary timber and steel lodges raised on stilts in a forest clearing." },
-  { name: "audience-school", w: 1600, h: 1200, pos: "50% 50%", alt: "Three children smiling through the ropes of a rope bridge, in black and white." },
+  { name: "audience-school", w: 1600, h: 1067, pos: "58% 50%", alt: "Four children in explorer shirts holding hands as they cross a plank bridge in a sunlit birch forest." },
   { name: "proof-dusk", w: 1600, h: 1065, pos: "50% 60%", alt: "A turreted timber treehouse with lit windows at sunset, with a deck and red berries in the foreground." },
 ];
 

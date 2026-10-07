@@ -14,6 +14,10 @@ import dynamic from "next/dynamic";
 //   <ScrollRunway />      the empty tall block that provides the scroll distance
 //   <SectionOverlays />   the HTML copy of every registered section, mounted from the sections config
 // ---------------------------------------------------------------------------
+// The loader waits for the runway this chunk mounts, so start fetching it as soon as this file is evaluated rather than after the
+// page has hydrated.
+if (typeof window !== "undefined") import("./ScrollRuntime");
+
 const Runtime = dynamic(() => import("./ScrollRuntime"), { ssr: false });
 const Runway = dynamic(() => import("./ScrollRuntime").then((m) => m.ScrollRunway), { ssr: false });
 const Overlays = dynamic(() => import("./ScrollRuntime").then((m) => m.SectionOverlays), { ssr: false });

@@ -158,9 +158,10 @@ const BOKEH_SCALE = 6.5;
 // Hero depth of field focus, in metres from the camera (see the focus line in the frame loop below).
 const HERO_FOCUS = 13;
 
+// composerRef is handed to <Precompile />, which compiles the passes' shaders in parallel before the first frame.
 // tier is the quality tier chosen by Scene.jsx (2 full, 1 medium, 0 low): below 2 the AO pass is dropped and the depth
 // of field is rendered at a smaller size (it is re-created, via key, when that size changes).
-export default function PostProcessing({ tier = 2 }) {
+export default function PostProcessing({ tier = 2, composerRef }) {
   const dof = useRef(null);
   const ao = useRef(null);
   const useAo = ENABLE_AO && tier >= 2;
@@ -202,7 +203,7 @@ export default function PostProcessing({ tier = 2 }) {
   });
 
   return (
-    <EffectComposer multisampling={0} enableNormalPass={false}>
+    <EffectComposer ref={composerRef} multisampling={0} enableNormalPass={false}>
       {/* 0. Ambient occlusion. World radius 1.6 m catches deck undersides, branch joins and the
           trunk flare. Half resolution with depth aware upsampling keeps it cheap. gammaCorrection
           is applied only on the last pass (n8ao decides from renderToScreen), so it stays linear

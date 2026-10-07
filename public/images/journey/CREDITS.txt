@@ -13,7 +13,8 @@ step-climb                       1795508
 audience-family                  1084362
 audience-estate                  10404314
 audience-resort                  2544399
-audience-school                  35216869
+audience-school                  5036779
 proof-dusk                       33405515
 Photo page: https://www.pexels.com/photo/<id>/
 step-walk, step-draw, step-build and step-climb were colour graded (one film look: faded blacks, forest-toned shadows, warm highlights, sage greens, fine grain, light vignette) so the process photos read as one shoot. Originals are the Pexels photos above (step-walk is Pexels 10365934).
+audience-school was colour graded with the same film look as the step photos (it replaced a sepia photo that did not say "schools").

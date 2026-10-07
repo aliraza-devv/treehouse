@@ -57,6 +57,27 @@ export function BoardsWall() {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// DECKING (what clients say, "Heard from the deck"): the process and the walkway are clad walls, so their boards run
+// up and down; this is a floor, so its boards run across. A hairline gap every 112px with a light edge under it, and
+// every board a touch different in tone (a lighter one, a plain one, a darker one), so it reads as laid timber and not as
+// stripes. Fainter than the walls on purpose: it is only there to give the green a surface. The top and the bottom fade out,
+// so the joins to the sections above and below have no edge.
+// ---------------------------------------------------------------------------------------------------------------
+const DECK = [
+  "repeating-linear-gradient(180deg, transparent 0 110px, color-mix(in srgb, var(--color-brand-forest) 60%, black) 110px 111px, color-mix(in srgb, var(--color-brand-cream) 2.2%, transparent) 111px 112px)",
+  "repeating-linear-gradient(180deg, color-mix(in srgb, var(--color-brand-cream) 1.3%, transparent) 0 112px, transparent 112px 224px, color-mix(in srgb, black 7%, transparent) 224px 336px)",
+].join(", ");
+
+export function DeckBackdrop() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 [mask-image:linear-gradient(to_bottom,transparent,black_14%,black_86%,transparent)]">
+      <div className="absolute inset-0" style={{ backgroundImage: DECK }} />
+      <Grain />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // THE SLICE (the questions): a tree cut across, very large and very faint, behind the heading, so the signpost stands in
 // front of the thing every project starts from. One slice, growth rings only (some seasons thick, some thin), fading out
 // toward its edge. data-slice is what the section drifts a little as the page scrolls.

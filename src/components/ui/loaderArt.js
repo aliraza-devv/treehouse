@@ -7,7 +7,10 @@
 // Each line draws itself (Preloader.jsx, with the CSS in globals.css): `at` is when it starts and `dur` how long it takes, in
 // seconds, on a clock that begins when the loader first paints. The whole drawing is done by DRAW_SECONDS. `tone` picks the
 // pencil: main (strong), soft (shading and detail) or leaf (the crown, in the brand's light green).
-export const DRAW_SECONDS = 1.05;
+// Every time below is written on the original 1.05 second clock and played at SPEED of it (the Preloader scales them), so the
+// whole drawing takes DRAW_SECONDS. The drawing itself is untouched.
+export const SPEED = 0.78;
+export const DRAW_SECONDS = Math.round(1.05 * SPEED * 1000) / 1000;
 
 const r1 = (v) => Math.round(v * 10) / 10;
 const lerp = (a, b, t) => a + (b - a) * t;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { gsap } from "@/lib/gsap";
 import { onSiteReady } from "@/lib/loadState";
 import { LAYERS } from "@/lib/layers";
 import { HERO_HEADING, STAGE_BLOCK, SUBLINE } from "@/components/ui/stageType";
@@ -12,8 +11,12 @@ const STATS = [
   { value: "5", label: "Continents" },
 ];
 
-// Seconds after the loader has finished (it hands over while its canopy is still clearing) at which each element lands.
-const DELAYS = { heading: 0.05, sub: 0.45, stats: 0.75 };
+// The same curve as GSAP's "expoOut" and the --ease-expo-out token: fast start, long soft landing.
+const EXPO_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+// Seconds after the loader begins to leave (plus the delay it reports, so the hero arrives as its canopy is clearing) at which each
+// element lands.
+const DELAYS = { heading: 0.05, sub: 0.3, stats: 0.5 };
 
 // One mask per line: the line rises out of it (overflow hidden), so the heading is revealed like type being
 // set, one line at a time. The padding keeps descenders and the underline inside the mask; the negative margin
@@ -56,26 +59,50 @@ export default function HeroContent() {
     // Reduced motion: CSS already shows the final state, so there is nothing to animate.
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    let ctx;
-    const cancel = onSiteReady(() => {
-      ctx = gsap.context(() => {
-        // Reading order: heading, then subline, then stats. Transform and opacity only.
-        for (const [name, delay] of Object.entries(DELAYS)) {
-          gsap.fromTo(
-            `[data-intro="${name}"]`,
-            { autoAlpha: 0, y: name === "heading" ? 0 : 20 },
-            { autoAlpha: 1, y: 0, duration: 1, ease: "expoOut", delay },
-          );
-        }
-        // The heading lines rise out of their masks, then the underline is drawn.
-        gsap.from("[data-hero-line]", { yPercent: 112, duration: 1.4, ease: "expoOut", stagger: 0.13, delay: DELAYS.heading });
-        gsap.fromTo("[data-hero-draw]", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.2, ease: "power2.inOut", delay: DELAYS.heading + 1.1 });
-      }, root);
+    const el = root.current;
+    const animations = [];
+
+    // Same moves, same easing as before (the expoOut curve), but as Web Animations: opacity and transform run on the compositor, so
+    // they keep playing smoothly while the 3D scene is busy starting up on the main thread, which is exactly when the hero arrives.
+    // fill "both" holds the first frame during the delay and the last one after, and the finished state is then written into the
+    // element so no animation object lingers.
+    const play = (target, keyframes, { duration, delay }) => {
+      const animation = target.animate(keyframes, { duration, delay, easing: EXPO_OUT, fill: "both" });
+      animations.push(animation);
+      animation.finished
+        .then(() => {
+          animation.commitStyles();
+          animation.cancel();
+        })
+        .catch(() => {});
+    };
+
+    const cancel = onSiteReady((delayMs) => {
+      // Reading order: heading, then subline, then stats. Transform and opacity only.
+      for (const [name, delay] of Object.entries(DELAYS)) {
+        const target = el.querySelector(`[data-intro="${name}"]`);
+        if (!target) continue;
+        const from = name === "heading" ? "none" : "translateY(20px)";
+        play(
+          target,
+          [
+            { opacity: 0, visibility: "visible", transform: from },
+            { opacity: 1, visibility: "visible", transform: "none" },
+          ],
+          { duration: 800, delay: delayMs + delay * 1000 },
+        );
+      }
+      // The heading lines rise out of their masks, then the underline is drawn.
+      el.querySelectorAll("[data-hero-line]").forEach((line, i) => {
+        play(line, [{ transform: "translateY(112%)" }, { transform: "none" }], { duration: 1100, delay: delayMs + DELAYS.heading * 1000 + i * 100 });
+      });
+      const draw = el.querySelector("[data-hero-draw]");
+      if (draw) play(draw, [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 1000, delay: delayMs + (DELAYS.heading + 0.8) * 1000 });
     });
 
     return () => {
       cancel();
-      ctx?.revert();
+      animations.forEach((animation) => animation.cancel());
     };
   }, []);
 

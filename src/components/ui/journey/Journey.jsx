@@ -11,6 +11,7 @@ import ProcessTrail from "./ProcessTrail";
 import ProofBand from "./ProofBand";
 import SiteFooter from "./SiteFooter";
 import Statement from "./Statement";
+import Testimonials from "./Testimonials";
 
 // SECTION 3: everything after the climb. Unlike the camera sections it is ordinary page content that
 // scrolls OVER the fixed 3D stage (see src/lib/sections/README.md, "Section 3"), so its text, links and
@@ -21,9 +22,9 @@ import Statement from "./Statement";
 //   canopy curtain   the parallax transition (CanopyCurtain.jsx)
 //   [data-journey-body] solid forest from here down; Scene.jsx stops rendering the canvas once this is
 //                       at the top of the viewport (it is fully covered, so the GPU is free for the page)
-//   statement, process, audience, proof, questions, the final invitation, footer
+//   statement, process, audience, proof, what clients say, questions, the final invitation, footer
 //
-// Anchors for the navbar: #about (process), #products (audiences), #projects (proof), plus #faq and #contact. The navbar's Start Project
+// Anchors for the navbar: #about (process), #products (audiences), #projects (proof), #reviews (what clients say), plus #faq and #contact. The navbar's Start Project
 // button goes to ENQUIRY_HREF (src/lib/site.js).
 export default function Journey() {
   // The runway (and so the page height) arrives after hydration, in its own lazy chunk, so every
@@ -53,6 +54,7 @@ export default function Journey() {
         <ProcessTrail />
         <Audience />
         <ProofBand />
+        <Testimonials />
         <Faq />
         <FinalCta />
         <SiteFooter />

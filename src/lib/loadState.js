@@ -10,6 +10,7 @@
 const state = (globalThis.__treehouseLoad ??= {
   parts: { fonts: false, runway: false, scene: false },
   ready: false,
+  delayMs: 0,
   partListeners: new Set(),
   readyListeners: new Set(),
 });
@@ -27,17 +28,20 @@ export function onPart(listener) {
   return () => state.partListeners.delete(listener);
 }
 
-export function markSiteReady() {
+// delayMs: how long from now the hero should wait before it starts. The loader signals at the START of its exit (so nothing waits
+// on a timer that a busy page could hold up) and says how much of the exit to let go by.
+export function markSiteReady(delayMs = 0) {
   if (state.ready) return;
   state.ready = true;
-  state.readyListeners.forEach((listener) => listener());
+  state.delayMs = delayMs;
+  state.readyListeners.forEach((listener) => listener(delayMs));
   state.readyListeners.clear();
 }
 
-// Calls `listener` once the loader has finished (straight away if it already has). Returns a cancel function.
+// Calls `listener(delayMs)` once the loader has begun to leave (straight away if it already has). Returns a cancel function.
 export function onSiteReady(listener) {
   if (state.ready) {
-    listener();
+    listener(0);
     return () => {};
   }
   state.readyListeners.add(listener);

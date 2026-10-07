@@ -8,20 +8,21 @@ import { ScrollTrigger } from "@/lib/gsap";
 import { markPart } from "@/lib/loadState";
 import { CAMERA, FOG } from "@/lib/sceneConfig";
 import HeroScene from "./HeroScene";
+import Precompile from "./Precompile";
 import PostProcessing, { EXPOSURE } from "./PostProcessing";
 
 // Development tooling is only referenced behind a build-time constant, so the bundler drops the
 // whole import in production and r3f-perf (a dev dependency) never ships.
 const DevTools = process.env.NODE_ENV === "development" ? lazy(() => import("./DevTools")) : null;
 
-// Starts the fade-in once the scene has really drawn several frames (the staged parts are in by then). Texture painting and
-// shader compilation can block the main thread for a moment, and a CSS transition that begins
-// before that block would be eaten by it and look like a pop.
+// Starts the fade-in once the scene has really drawn a few frames. The shaders are compiled before the first frame now (see
+// Precompile.jsx), so what is left to settle is the textures uploading on first use; a CSS transition that began before that
+// would be eaten by it and look like a pop.
 function FadeInTrigger({ onVisible }) {
   const frames = useRef(0);
   useFrame(() => {
     frames.current += 1;
-    if (frames.current === 10) onVisible(); // after the staged parts have mounted
+    if (frames.current === 4) onVisible();
   });
   return null;
 }
@@ -64,6 +65,10 @@ export default function Scene() {
   // depth of field is heavy). It resumes the moment the visitor scrolls back up.
   const [covered, setCovered] = useState(false);
   const [tier, setTier] = useState(2);
+  // False until every shader program has been compiled (in parallel, by Precompile); the render loop does not start before that,
+  // so the page is never frozen on a compile and the loader keeps drawing.
+  const [compiled, setCompiled] = useState(false);
+  const composerRef = useRef(null);
 
   useEffect(() => {
     const body = document.querySelector("[data-journey-body]");
@@ -81,12 +86,12 @@ export default function Scene() {
   return (
     // The deep forest page colour sits behind the canvas, so the fade-in never reveals white.
     <div
-      className={`pointer-events-none fixed inset-0 z-0 bg-brand-forest transition-opacity duration-[1400ms] ease-out ${
+      className={`pointer-events-none fixed inset-0 z-0 bg-brand-forest transition-opacity duration-[1000ms] ease-out ${
         visible ? "opacity-100" : "opacity-0"
       }`}
     >
       <Canvas
-        frameloop={covered ? "never" : "always"}
+        frameloop={covered || !compiled ? "never" : "always"}
         // The soft filter in this three.js version is PCFShadowMap (PCFSoftShadowMap was
         // removed); its softness is set per light with shadow.radius (see HeroScene).
         // autoUpdate is off: HeroScene's ShadowScheduler refreshes the map about 10 times a second.
@@ -106,7 +111,8 @@ export default function Scene() {
       >
         <color attach="background" args={[FOG.color]} />
         <HeroScene />
-        <PostProcessing tier={tier} />
+        <PostProcessing tier={tier} composerRef={composerRef} />
+        <Precompile composer={composerRef} onDone={() => setCompiled(true)} />
         <QualityGovernor
           onDecline={() => setTier((t) => Math.max(0, t - 1))}
           onIncline={() => setTier((t) => Math.min(2, t + 1))}
