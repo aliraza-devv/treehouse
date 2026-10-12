@@ -31,7 +31,7 @@ export default function Home() {
 
         <div
           data-stage
-          className="fixed inset-x-0 top-0 flex h-[100dvh] flex-col justify-end overflow-hidden"
+          className="fixed inset-x-0 top-0 flex h-[100dvh] flex-col justify-end overflow-hidden will-change-transform"
           style={{ zIndex: LAYERS.scene }}
         >
           <div aria-hidden="true" className="absolute inset-0" style={{ zIndex: LAYERS.scene }}>

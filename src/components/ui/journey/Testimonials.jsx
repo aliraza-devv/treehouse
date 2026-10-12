@@ -70,9 +70,13 @@ export default function Testimonials() {
       const firstPanel = q("[data-panel]")[0];
 
       gsap
-        .timeline({ scrollTrigger: { trigger: el, start: "top 62%", once: true } })
+        .timeline({ scrollTrigger: { trigger: el, start: "top 70%", once: true } })
         .from(q("[data-rise]"), { yPercent: 110, duration: 1.2, ease: "expoOut", stagger: 0.1 }, 0)
-        .from(q("[data-disc]"), { clipPath: "circle(0% at 50% 50%)", duration: 1.4, ease: "expoOut" }, 0.3)
+        // Both ends are written out. The natural value is clip-path: none, and a tween that ends at "none" has no radius to grow: it
+        // kept the circle at 0% for the whole duration and then snapped the portrait open at the end, so the window looked empty
+        // for about a second after the words had started. 72% of the width covers the corners of the square, the same as the
+        // iris between portraits below.
+        .fromTo(q("[data-disc]"), { clipPath: "circle(0% at 50% 50%)" }, { clipPath: "circle(72% at 50% 50%)", duration: 1.4, ease: "expoOut", clearProps: "clipPath" }, 0.1)
         .from(firstPanel.querySelectorAll("[data-word]"), { yPercent: 110, duration: 1.1, ease: "expoOut", stagger: 0.02 }, 0.7)
         .from(firstPanel.querySelectorAll("[data-meta]"), { autoAlpha: 0, y: 10, duration: 0.8, ease: "expoOut" }, 1.3)
         .from(q("[data-tag]"), { autoAlpha: 0, y: 6, duration: 0.8, ease: "expoOut" }, 1.4)
@@ -80,7 +84,23 @@ export default function Testimonials() {
         .from(q("[data-rung]"), { scaleY: 0, transformOrigin: "50% 100%", duration: 0.6, ease: "expoOut", stagger: 0.05 }, 1.5);
     });
 
+    // The portraits are lazy, which is right for ten photographs, but a lazy image only starts when it is near the screen, and a
+    // visitor scrolling quickly arrives before it has. So once the section is within 3000px of the screen, every one of them is told
+    // to load now (the first already is: see its markup).
+    const near = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        el.querySelectorAll("img[loading='lazy']").forEach((img) => {
+          img.loading = "eager";
+        });
+        near.disconnect();
+      },
+      { rootMargin: "3000px 0px" },
+    );
+    near.observe(el);
+
     return () => {
+      near.disconnect();
       mm.revert();
       ctx.current?.revert();
     };
@@ -209,7 +229,8 @@ export default function Testimonials() {
                       alt=""
                       width={960}
                       height={960}
-                      loading="lazy"
+                      loading={i === 0 ? "eager" : "lazy"}
+                      fetchPriority={i === 0 ? "low" : undefined}
                       decoding="async"
                       draggable={false}
                       className="photo-grade h-full w-full object-cover"

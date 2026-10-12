@@ -167,13 +167,20 @@ export default function ProofBand() {
             <ul role="list" className="grid grid-cols-3 divide-x divide-brand-cream/15">
               {STATS.map((stat) => (
                 <li key={stat.label} className="flex flex-col gap-1 px-4 first:pl-0 md:px-9 md:first:pl-0">
-                  <span
-                    data-count={stat.value}
-                    data-suffix={stat.suffix}
-                    className="font-display text-[clamp(2.4rem,5vw,5rem)] leading-none text-brand-cream lining-nums tabular-nums"
-                  >
-                    {stat.value}
-                    {stat.suffix}
+                  {/* The number and, in the same cell, an invisible number as wide as it can ever get: the cell keeps that width from the first
+                      frame, so the stats box does not change size while the count runs and push the paragraph beside it about. The digits
+                      of this font are proportional (a 0 is the widest, 64.8 against 56.1 for a 5 at 100px), so a number part way through
+                      the count ("209+") can be wider than the final one ("250+"): the invisible copy is the same number of digits, all
+                      zeros. */}
+                  <span className="grid font-display text-[clamp(2.4rem,5vw,5rem)] leading-none text-brand-cream lining-nums tabular-nums">
+                    <span aria-hidden="true" className="invisible [grid-area:1/1]">
+                      {String(stat.value).replace(/[0-9]/g, "0")}
+                      {stat.suffix}
+                    </span>
+                    <span data-count={stat.value} data-suffix={stat.suffix} className="[grid-area:1/1]">
+                      {stat.value}
+                      {stat.suffix}
+                    </span>
                   </span>
                   <span className="text-[14px] text-brand-cream/60">{stat.label}</span>
                 </li>

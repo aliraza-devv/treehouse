@@ -54,6 +54,17 @@ export const EXPOSURE = 0.92;
 // Set false to drop the AO pass entirely if it ever misbehaves on a device.
 const ENABLE_AO = true;
 
+// QUALITY TIERS, chosen by the governor in Scene.jsx from the real frame time (3 = everything, 0 = the lightest). Measured on an
+// integrated laptop GPU at 1080p, ambient occlusion cost about 28 ms a frame and depth of field about 33 ms (bloom 3), and the bare
+// scene about 49 ms, so those are the things the tiers take away, in that order, and then the pixel count. dpr is the canvas pixel
+// ratio; ao says whether the occlusion pass runs; dof is the depth of field's resolution (0 = no depth of field).
+export const TIERS = {
+  3: { dpr: [1, 1.5], ao: true, dof: 0.75 },
+  2: { dpr: 1, ao: false, dof: 0.6 },
+  1: { dpr: 0.8, ao: false, dof: 0.5 },
+  0: { dpr: 0.65, ao: false, dof: 0 },
+};
+
 // ---------------------------------------------------------------------------
 // Custom grade effect: split toning (warm highlights, cool shadows), lifted blacks, mild
 // saturation. It runs after tone mapping, on the display-referred (still linear) image.
@@ -159,13 +170,13 @@ const BOKEH_SCALE = 6.5;
 const HERO_FOCUS = 13;
 
 // composerRef is handed to <Precompile />, which compiles the passes' shaders in parallel before the first frame.
-// tier is the quality tier chosen by Scene.jsx (2 full, 1 medium, 0 low): below 2 the AO pass is dropped and the depth
+// tier is the quality tier chosen by Scene.jsx (see TIERS above): the AO pass and then the depth of field are dropped, and the depth
 // of field is rendered at a smaller size (it is re-created, via key, when that size changes).
-export default function PostProcessing({ tier = 2, composerRef }) {
+export default function PostProcessing({ tier = 3, composerRef }) {
   const dof = useRef(null);
   const ao = useRef(null);
-  const useAo = ENABLE_AO && tier >= 2;
-  const dofResolution = tier >= 2 ? 0.75 : tier === 1 ? 0.6 : 0.5;
+  const useAo = ENABLE_AO && TIERS[tier].ao;
+  const dofResolution = TIERS[tier].dof;
 
   // N8AO auto-detects transparent materials (mist, beams, motes, glass) and then re-renders all
   // of them into two extra full-resolution targets every frame. Our soft sheets must not occlude
@@ -233,6 +244,7 @@ export default function PostProcessing({ tier = 2, composerRef }) {
           fill pass (max filter) closes the gaps a 64 tap kernel leaves at this radius, and the
           fern fronds are painted with overlapping, shallowly notched pinnae so the larger discs
           have no see-through gaps to turn into bright dots. */}
+      {dofResolution > 0 && (
       <DepthOfField
         key={dofResolution}
         ref={dof}
@@ -241,6 +253,7 @@ export default function PostProcessing({ tier = 2, composerRef }) {
         bokehScale={BOKEH_SCALE}
         resolutionScale={dofResolution}
       />
+      )}
 
       {/* 2. Bloom. Threshold 0.85 on linear HDR, so only values that exceed display white (sun
           shafts, warm lantern light, bright motes) glow. The soft knee (smoothing 0.3) avoids a

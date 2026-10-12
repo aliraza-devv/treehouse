@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef } from "react";
+import { scrollState } from "@/lib/scroll/scrollStore";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { FOLIAGE_WIND } from "@/lib/foliageMaterial";
@@ -153,16 +154,28 @@ function WindClock() {
 
 // The shadow map is re-rendered on a schedule instead of every frame (Scene.jsx turns autoUpdate
 // off). A 4096 map with about 1,700 alpha tested leaf clusters in it is the single biggest GPU
-// cost in the scene, and the sun and every caster are static: the only motion in the shadow pass
-// is 7 cm of leaf wind. Refreshing every 6th frame (about 10 Hz) is invisible and cuts that
-// cost by 6x. The first frames refresh every frame so the staged parts (cabin, oak, forest) cast
-// as soon as they mount.
+// cost in the scene (on an integrated laptop GPU one redraw of it is a stall of 100 ms or more), and the sun and every caster are
+// static: the only motion in the shadow pass is 7 cm of leaf wind. So: a short burst at the start (every 3rd frame for the first
+// 24, so the staged parts, the cabin, oak and forest, cast as soon as they mount); then NOT AT ALL while the page is scrolling (the
+// camera moves through a world whose shadows have not changed, and a redraw in the middle of a scroll was the periodic stutter);
+// and about every 6th frame (about 10 Hz) once the page is still, so the leaves' shadows keep moving with the wind.
 const SHADOW_EVERY = 6;
+const MOVING = 0.00005; // progress per second above which the page counts as scrolling
 function ShadowScheduler() {
   const frame = useRef(0);
+  const still = useRef(0);
   useFrame((state) => {
     frame.current += 1;
-    if (frame.current < 40 || frame.current % SHADOW_EVERY === 0) state.gl.shadowMap.needsUpdate = true;
+    if (frame.current <= 24) {
+      if (frame.current % 3 === 1) state.gl.shadowMap.needsUpdate = true;
+      return;
+    }
+    if (Math.abs(scrollState.velocity) > MOVING) {
+      still.current = 0;
+      return;
+    }
+    still.current += 1;
+    if (still.current % SHADOW_EVERY === 0) state.gl.shadowMap.needsUpdate = true;
   });
   return null;
 }
