@@ -85,7 +85,7 @@ export default function SiteFooter() {
         />
       </svg>
 
-      <div className="relative mx-auto grid max-w-[1400px] gap-14 px-6 pt-[14vh] pb-[9vh] md:px-8 lg:grid-cols-12 lg:gap-x-10 lg:px-16">
+      <div className="relative mx-auto grid max-w-[1400px] gap-14 px-6 pt-[14vh] pb-[3vh] md:px-8 lg:grid-cols-12 lg:gap-x-10 lg:px-16">
         {/* The ways round the page, large. Hover one and the rest stand back. */}
         <nav aria-label="Footer" className="lg:col-span-7">
           <ul role="list" className="flex flex-col [&:hover>li:not(:hover)]:opacity-40 [&:focus-within>li:not(:focus-within)]:opacity-40">
@@ -150,7 +150,7 @@ export default function SiteFooter() {
 
       <div className="relative mt-3 border-t border-brand-cream/10">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-3 px-6 py-6 text-xs leading-relaxed text-brand-cream/70 md:flex-row md:justify-between md:px-8 lg:px-16">
-          <p>© {year} Treehouse Life</p>
+          <p>© {year} Treehouse</p>
           <p>
             Photography from{" "}
             <a href="https://www.pexels.com" className="focus-ring underline" target="_blank" rel="noopener noreferrer">

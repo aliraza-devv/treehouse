@@ -180,7 +180,7 @@ export default function Preloader() {
 
   return (
     <div ref={root} data-loader role="status" aria-live="polite" className="fixed inset-0 overflow-hidden" style={{ zIndex: LAYERS.loader }}>
-      <span className="sr-only">Loading Treehouse Life</span>
+      <span className="sr-only">Loading Treehouse</span>
 
       {/* The sheet: the forest colour, with a canopy of leaf domes hanging from its lower edge. It is the part that lifts. */}
       <div ref={sheet} aria-hidden="true" className="absolute inset-0 bg-brand-forest will-change-transform">

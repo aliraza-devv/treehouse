@@ -118,7 +118,8 @@ export const AWARDS = [
 // testimonials), where they are published without names, so none is given here either; the attribution says only what the
 // words themselves say (a family, grandparents, a school). The wording is theirs. What changed: straight apostrophes, a full
 // stop where the original ran sentences together with a comma, "Treetop" spelled as it is on the rest of this site, and the
-// school quote is cut after its first sentence. `accent` is the phrase set in the warm colour (it must appear in `quote`),
+// school quote is cut after its first sentence, and three others are cut to the sentences that do not name the company (the company is
+// now just "Treehouse", and a client's words are never changed to match). `accent` is the phrase set in the warm colour (it must appear in `quote`),
 // `who` and the optional `what` the attribution, `portrait` the square photograph shown large in the round window beside the words, `illustrative` true while that photograph is a stand-in.
 // The page shows them one at a time with previous and next buttons, a counter and a row of rungs to jump along, so there is
 // no limit built in: add an object to this array. Around ten reads well; past about twelve the rungs get very narrow, and
@@ -168,7 +169,7 @@ export const TESTIMONIALS = [
   },
   {
     id: "bridge",
-    quote: "It was a delight and breath of fresh air to work with Treehouse Life. The Rope Bridge is a work of art and everyone admires the structure.",
+    quote: "The Rope Bridge is a work of art and everyone admires the structure.",
     accent: "a work of art",
     who: "A client",
     portrait: "/images/clients/bridge.webp",
@@ -203,8 +204,8 @@ export const TESTIMONIALS = [
   },
   {
     id: "idea",
-    quote: "It is safe to say the Treehouse is a hit. I could not be happier. Treehouse Life did an incredible job helping me bring my idea to life.",
-    accent: "bring my idea to life",
+    quote: "It is safe to say the Treehouse is a hit. I could not be happier.",
+    accent: "I could not be happier",
     who: "A client",
     portrait: "/images/clients/idea.webp",
     illustrative: true,
@@ -212,7 +213,7 @@ export const TESTIMONIALS = [
   },
   {
     id: "detail",
-    quote: "I can't thank you enough. I will certainly be recommending Treehouse Life to my friends. Extremely good skills and an eye for detail.",
+    quote: "Extremely good skills and an eye for detail.",
     accent: "an eye for detail",
     who: "A client",
     portrait: "/images/clients/detail.webp",

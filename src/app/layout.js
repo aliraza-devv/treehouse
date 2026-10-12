@@ -33,13 +33,13 @@ const sans = Figtree({
 export const metadata = {
   metadataBase: new URL("https://treehouselife.com"),
   alternates: { canonical: "/" },
-  title: "Treehouse Life | Luxury Treehouse Design and Build",
+  title: "Treehouse | Luxury Treehouse Design and Build",
   description:
     "Award-winning treehouse, rope bridge and treetop walkway builders. Bespoke treehouses designed and built in the UK for private gardens, estates, resorts and schools.",
   openGraph: {
-    title: "Treehouse Life | Luxury Treehouse Design and Build",
+    title: "Treehouse | Luxury Treehouse Design and Build",
     description: "Some memories are built, not bought. Bespoke treehouses designed and built in the UK.",
-    siteName: "Treehouse Life",
+    siteName: "Treehouse",
     type: "website",
     locale: "en_GB",
   },

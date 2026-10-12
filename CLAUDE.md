@@ -53,7 +53,7 @@ A 3D immersive, scroll-driven landing page for Treehouse Life (treehouselife.com
 - Reference feel: nature-documentary opening shot, award-winning web (mont-fort.com, pasqua.it).
 - Film grain, depth of field, vignette on every scene.
 - Cool morning mist atmosphere with warm sun shafts, transitioning to warm golden hour later in the journey.
-- Typography (changed at the owner's request, to match the owner's Briston and Clara references): Fraunces variable (font-display) for the logo and every heading, always heavy (800) at the display optical size with SOFT and WONK on, set once in globals.css (.font-display), so do not add weight classes to headings; Figtree (font-sans) for body and UI; Caveat (font-hand) only for handwritten margin notes in Section 3. All via next/font/google in src/app/layout.js. The wordmark (src/components/ui/Wordmark.jsx) replaces the dot of the i in Life with a leaf.
+- Typography (changed at the owner's request, to match the owner's Briston and Clara references): Fraunces variable (font-display) for the logo and every heading, always heavy (800) at the display optical size with SOFT and WONK on, set once in globals.css (.font-display), so do not add weight classes to headings; Figtree (font-sans) for body and UI; Caveat (font-hand) only for handwritten margin notes in Section 3. All via next/font/google in src/app/layout.js. The brand name on the page is "Treehouse" (shortened from "Treehouse Life" at the owner's request); the wordmark (src/components/ui/Wordmark.jsx) has a leaf sprouting off the top of the stem of the h. Client quotes are never reworded to match, so a quote that names the company is cut to the sentences that do not.
 - No em dashes in any copy or content.
 
 ## Dev server

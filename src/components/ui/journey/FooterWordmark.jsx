@@ -6,29 +6,31 @@ import { LEAF_PATH } from "@/components/ui/journey/canopy";
 
 // THE NAME, as big as the page allows, standing on the ground line. The footer is the ground, so the letters are shoots: when
 // it arrives they come up out of the soil (the bottom edge of the mask), one after another in no particular order, each a
-// little off upright, and the leaf on the i unfurls last, as it does in the logo. After that the letters are alive to the
+// little off upright, and the leaf on the h unfurls last, as it does in the logo. After that the letters are alive to the
 // pointer the way a plant is alive to light: the ones near the cursor lift a little, lean toward it and warm to the page's
 // lantern colour, and they settle back when it goes. On a touch screen there is no cursor, so a tap makes a letter hop.
 // Reduced motion: it is simply there, still.
 //
-// It is set in the same Fraunces as the logo, with the dotless i and the leaf of Wordmark.jsx, and sized to the width of its
-// container (container query units), so it fills the page edge to edge at any width: two lines on a phone, one from the
-// tablet size up. Screen readers get the plain name.
-const WORDS = ["Treehouse", "Lıfe"]; // the second has the dotless i (U+0131): the leaf is its dot
+// It is set in the same Fraunces as the logo, with the leaf of Wordmark.jsx (placed from the baseline in em: see there), and sized
+// to the width of its container (container query units), so the one word fills the page edge to edge at any width. Screen
+// readers get the plain name.
+const WORD = "Treehouse";
 
-function Letter({ char, index }) {
+function Letter({ char }) {
   return (
-    <span data-letter data-i={index} className="relative inline-block origin-bottom will-change-transform" style={{ "--k": 0, color: "color-mix(in srgb, var(--color-brand-warm) calc(var(--k, 0) * 85%), var(--color-brand-cream))" }}>
+    <span data-letter className="relative inline-block origin-bottom will-change-transform" style={{ "--k": 0, color: "color-mix(in srgb, var(--color-brand-warm) calc(var(--k, 0) * 85%), var(--color-brand-cream))" }}>
       <span data-hop className="relative inline-block">
-        {char}
-        {char === "ı" && (
-          // positioned here, grown inside (so the scale never fights the lean)
-          <span aria-hidden="true" className="absolute top-[0.2em] left-1/2 h-[0.17em] w-[0.36em] -rotate-[52deg]">
-            <svg data-leaf viewBox="0 0 26 12" className="block h-full w-full origin-left fill-brand-green-light">
-              <path d={LEAF_PATH} />
-            </svg>
+        {char === "h" && (
+          // a zero-size anchor on the baseline; the leaf is placed from it, and grown inside (so the scale never fights the lean)
+          <span aria-hidden="true" className="relative inline-block h-0 w-0 align-baseline">
+            <span className="absolute bottom-[0.66em] left-[0.22em] h-[0.17em] w-[0.36em] origin-left -rotate-[52deg]">
+              <svg data-leaf viewBox="0 0 26 12" className="block h-full w-full origin-left fill-brand-green-light">
+                <path d={LEAF_PATH} />
+              </svg>
+            </span>
           </span>
         )}
+        {char}
       </span>
     </span>
   );
@@ -123,22 +125,21 @@ export default function FooterWordmark() {
     return () => mm.revert();
   }, []);
 
-  let count = 0;
   return (
-    // The container is the footer's width; the type is sized from it, so it always fills the line
-    <div ref={root} className="[container-type:inline-size]" style={{ "--one": "calc(100cqw / 6.2)", "--two": "calc(100cqw / 4.6)" }}>
+    // The container is the footer's width; the type is sized from it, so it always fills the line. The word is 4.417em wide in this
+    // font (measured), so 4.43 fills about 99.7 percent of it. The headroom above (0.45em) is for the leaf, which stands 0.32em above
+    // the h, and for the letters lifting toward the cursor, so neither is clipped by the mask.
+    <div ref={root} className="[container-type:inline-size]" style={{ "--size": "calc(100cqw / 4.43)" }}>
       <p
-        className="font-display flex flex-col overflow-hidden pt-[0.16em] pb-[0.04em] leading-[0.8] tracking-[-0.015em] text-brand-cream select-none max-md:text-[length:var(--two)] md:flex-row md:justify-between md:text-[length:var(--one)]"
+        className="font-display overflow-hidden pt-[0.45em] pb-[0.04em] text-[length:var(--size)] leading-[0.8] tracking-[-0.015em] whitespace-nowrap text-brand-cream select-none"
         style={{ fontKerning: "normal" }}
       >
-        <span className="sr-only">Treehouse Life</span>
-        {WORDS.map((word) => (
-          <span key={word} aria-hidden="true" className="block whitespace-nowrap">
-            {[...word].map((char, i) => (
-              <Letter key={i} char={char} index={count++} />
-            ))}
-          </span>
-        ))}
+        <span className="sr-only">Treehouse</span>
+        <span aria-hidden="true" className="block">
+          {[...WORD].map((char, i) => (
+            <Letter key={i} char={char} />
+          ))}
+        </span>
       </p>
     </div>
   );
